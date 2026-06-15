@@ -1,0 +1,807 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AskMe Analytics Dashboard</title>
+
+  <!-- Dependencies (CDN) -->
+  <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+  <script src="https://unpkg.com/recharts@2.10.3/umd/Recharts.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Segoe UI', Tahoma, sans-serif; font-size: 13px; background: #F3F3F3; color: #252423; height: 100vh; overflow: hidden; }
+
+    /* Shell */
+    .app-shell { display: flex; flex-direction: column; height: 100vh; }
+    .app-header { background: #4472C4; color: #fff; height: 48px; display: flex; align-items: center; padding: 0 20px; gap: 10px; flex-shrink: 0; box-shadow: 0 1px 4px rgba(0,0,0,.2); z-index: 10; }
+    .app-header h1 { font-size: 16px; font-weight: 600; }
+    .header-sub { font-size: 12px; opacity: .75; }
+
+    /* Tabs */
+    .tab-bar { background: #fff; border-bottom: 1px solid #E0E0E0; display: flex; padding: 0 16px; flex-shrink: 0; }
+    .tab-btn { background: none; border: none; padding: 10px 18px; font-size: 13px; font-family: inherit; cursor: pointer; color: #605E5C; border-bottom: 3px solid transparent; transition: all .15s; }
+    .tab-btn:hover { color: #4472C4; background: #F3F3F3; }
+    .tab-btn.active { color: #4472C4; border-bottom-color: #4472C4; font-weight: 600; }
+
+    /* Layout */
+    .main-layout { display: flex; flex: 1; overflow: hidden; }
+    .filter-panel { width: 215px; min-width: 215px; background: #fff; border-right: 1px solid #E0E0E0; padding: 12px; overflow-y: auto; flex-shrink: 0; }
+    .page-content { flex: 1; overflow-y: auto; }
+    .page { padding: 14px; display: flex; flex-direction: column; gap: 14px; }
+
+    /* Filter Panel */
+    .filter-panel-header { display: flex; justify-content: space-between; align-items: center; font-weight: 600; font-size: 12px; margin-bottom: 12px; }
+    .filter-reset-btn { background: none; border: 1px solid #E0E0E0; border-radius: 3px; padding: 2px 8px; font-size: 11px; cursor: pointer; color: #605E5C; }
+    .filter-reset-btn:hover { background: #F3F3F3; color: #4472C4; }
+    .filter-group { margin-bottom: 14px; }
+    .filter-label { font-size: 11px; font-weight: 600; color: #605E5C; text-transform: uppercase; letter-spacing: .5px; margin-bottom: 5px; display: flex; justify-content: space-between; align-items: center; }
+    .filter-clear { background: none; border: none; cursor: pointer; color: #bbb; font-size: 11px; padding: 0 2px; }
+    .filter-clear:hover { color: #E74C3C; }
+    .filter-options { display: flex; flex-wrap: wrap; gap: 4px; }
+    .filter-chip { background: #F3F3F3; border: 1px solid #D0D0D0; border-radius: 3px; padding: 3px 7px; font-size: 11px; font-family: inherit; cursor: pointer; color: #252423; transition: all .12s; max-width: 185px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .filter-chip:hover { border-color: #4472C4; color: #4472C4; }
+    .filter-chip.active { background: #4472C4; border-color: #4472C4; color: #fff; }
+
+    /* KPI */
+    .kpi-row { display: flex; gap: 10px; flex-wrap: wrap; }
+    .kpi-card { background: #fff; border: 1px solid #E0E0E0; border-radius: 4px; padding: 12px 16px; flex: 1; min-width: 120px; max-width: 190px; box-shadow: 0 1px 3px rgba(0,0,0,.05); }
+    .kpi-card:hover { box-shadow: 0 2px 8px rgba(0,0,0,.1); }
+    .kpi-label { font-size: 11px; color: #605E5C; font-weight: 600; text-transform: uppercase; letter-spacing: .4px; margin-bottom: 5px; line-height: 1.3; }
+    .kpi-value { font-size: 22px; font-weight: 700; color: #252423; line-height: 1.1; word-break: break-word; }
+
+    /* Charts */
+    .chart-row { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+    .chart-row.single { grid-template-columns: 1fr; }
+    .chart-card { background: #fff; border: 1px solid #E0E0E0; border-radius: 4px; padding: 12px 14px; box-shadow: 0 1px 3px rgba(0,0,0,.05); }
+    .chart-title { font-size: 13px; font-weight: 600; color: #252423; margin-bottom: 8px; padding-bottom: 7px; border-bottom: 1px solid #F0F0F0; }
+
+    /* Tooltip */
+    .custom-tt { background: #fff; border: 1px solid #E0E0E0; border-radius: 4px; padding: 8px 12px; font-size: 12px; box-shadow: 0 2px 8px rgba(0,0,0,.12); min-width: 130px; }
+    .tt-label { font-weight: 600; margin-bottom: 5px; border-bottom: 1px solid #F0F0F0; padding-bottom: 3px; }
+    .tt-row { display: flex; align-items: center; gap: 5px; margin-top: 3px; }
+    .tt-dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
+    .tt-name { color: #605E5C; flex: 1; }
+    .tt-val { font-weight: 600; }
+
+    /* Loader / Error */
+    .loading-screen, .error-screen { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; gap: 14px; color: #605E5C; }
+    .spinner { width: 36px; height: 36px; border: 3px solid #E0E0E0; border-top-color: #4472C4; border-radius: 50%; animation: spin .8s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .error-screen h2 { color: #E74C3C; font-size: 15px; }
+    .error-screen p { font-size: 12px; color: #888; text-align: center; max-width: 380px; }
+    .file-pick-btn { margin-top: 8px; background: #4472C4; color: #fff; border: none; border-radius: 4px; padding: 8px 20px; font-size: 13px; font-family: inherit; cursor: pointer; }
+    .file-pick-btn:hover { background: #365fa0; }
+    #filePicker { display: none; }
+
+    .page-loading { padding: 40px; text-align: center; color: #888; }
+  </style>
+</head>
+<body>
+<div id="root"></div>
+
+<script type="text/babel">
+// ── Globals ────────────────────────────────────────────────────────────────────
+const { useState, useEffect, useCallback, useRef } = React;
+const {
+  LineChart, Line, BarChart, Bar, AreaChart, Area,
+  PieChart, Pie, Cell,
+  XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
+} = Recharts;
+
+// ── Constants ──────────────────────────────────────────────────────────────────
+const COLORS = ['#4472C4', '#ED7D31', '#A5A5A5', '#FFC000', '#70AD47', '#FF0000'];
+
+const LLM_STEP_LABELS = {
+  first_sql_generation_llm: 'SQL Generation',
+  standalone_question_generation_llm: 'Question Rephrasing',
+  component_name_identification_llm: 'Component ID',
+  final_response_llm: 'Final Response',
+  retry_sql_generation_1: 'SQL Retry (1st)',
+  retry_sql_generation_2: 'SQL Retry (2nd)',
+  canonical_and_intent_llm: 'Intent Extraction',
+  similarity_score_llm: 'Similarity Score',
+  fewshot_score_identification_llm: 'Few-shot Score',
+};
+
+const MONTH_ORDER = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+
+// ── Helpers ────────────────────────────────────────────────────────────────────
+const toInt = v => { const n = parseInt(v, 10); return isNaN(n) ? 0 : n; };
+const toFloat = v => { const n = parseFloat(v); return isNaN(n) ? 0 : n; };
+const distinctCount = arr => new Set(arr).size;
+const groupBy = (arr, key) => arr.reduce((acc, r) => {
+  const k = r[key] ?? 'Unknown';
+  (acc[k] = acc[k] || []).push(r);
+  return acc;
+}, {});
+const sumField = (arr, f) => arr.reduce((s, r) => s + toInt(r[f]), 0);
+const avgField = (arr, f) => arr.length ? arr.reduce((s, r) => s + toFloat(r[f]), 0) / arr.length : 0;
+
+function sortMonths(months) {
+  return [...months].sort((a, b) => {
+    const [ma, ya] = a.split(' '); const [mb, yb] = b.split(' ');
+    const yd = (parseInt(ya)||0) - (parseInt(yb)||0);
+    return yd !== 0 ? yd : MONTH_ORDER.indexOf(ma) - MONTH_ORDER.indexOf(mb);
+  });
+}
+
+function fmtNum(value, type = 'number') {
+  if (value === null || value === undefined) return '—';
+  switch (type) {
+    case 'tokens': return value >= 1e6 ? `${(value/1e6).toFixed(1)}M` : value >= 1000 ? value.toLocaleString() : String(value);
+    case 'percent': return `${Number(value).toFixed(1)}%`;
+    case 'time': return `${Number(value).toFixed(1)}s`;
+    case 'decimal': return Number(value).toFixed(1);
+    case 'text': return String(value);
+    default: return typeof value === 'number' && value >= 1000 ? value.toLocaleString() : String(value);
+  }
+}
+
+// ── Data Loading ───────────────────────────────────────────────────────────────
+function getSheet(wb, name) {
+  const s = wb.Sheets[name];
+  return s ? XLSX.utils.sheet_to_json(s, { defval: '' }) : [];
+}
+
+function applyFilters(data, filters, noBotType = false) {
+  let out = data;
+  if (filters.months?.length)             out = out.filter(r => filters.months.includes(r.Month));
+  if (!noBotType && filters.botTypes?.length) out = out.filter(r => filters.botTypes.includes(r.Bot_Type));
+  if (filters.modules?.length)            out = out.filter(r => filters.modules.includes(r.Module));
+  if (filters.questionCategories?.length) out = out.filter(r => filters.questionCategories.includes(r.Question_Category));
+  return out;
+}
+
+function computeData(wb, filters = {}) {
+  const cleaned  = getSheet(wb, 'AskQ_Cleaned');
+  const flatTbl  = getSheet(wb, 'PowerBI_Flat_Table');
+  const respTime = getSheet(wb, 'AskQ_ResponseTime');
+  const tokUsage = getSheet(wb, 'AskQ_TokenUsage');
+  const llmSteps = getSheet(wb, 'AskQ_LLMSteps');
+
+  // Filter options from full data
+  const filterOptions = {
+    months: sortMonths([...new Set([...cleaned.map(r=>r.Month),...flatTbl.map(r=>r.Month)].filter(Boolean))]),
+    botTypes: [...new Set(cleaned.map(r=>r.Bot_Type).filter(Boolean))].sort(),
+    modules: [...new Set(flatTbl.map(r=>r.Module).filter(Boolean))].sort(),
+    questionCategories: [...new Set(cleaned.map(r=>r.Question_Category).filter(Boolean))].sort(),
+  };
+
+  const fc   = applyFilters(cleaned, filters);
+  const ft   = applyFilters(flatTbl, filters);
+  const fr   = applyFilters(respTime, filters);
+  const ftu  = applyFilters(tokUsage, filters);
+  const fls  = applyFilters(llmSteps, filters);
+  const fcNB = applyFilters(cleaned, filters, true); // no bot-type filter
+
+  const uq   = fc.filter(r => toInt(r.Is_User_Question_Flag) === 1);
+  const uqNB = fcNB.filter(r => toInt(r.Is_User_Question_Flag) === 1);
+  const bots = fc.filter(r => r.Sender_Type === 'bot');
+
+  // ── 37 Measures ──────────────────────────────────────────────────────────
+  const totalQuestions   = uq.length;
+  const totalUniqueQ     = distinctCount(uq.map(r=>r.Message));
+  const activeUsers      = distinctCount(uqNB.map(r=>r.User_Display).filter(Boolean));
+  const totalSessions    = distinctCount(fc.map(r=>r.Session_ID).filter(Boolean));
+  const avgQPerUser      = activeUsers ? +(totalQuestions/activeUsers).toFixed(1) : 0;
+  const avgSessPerUser   = activeUsers ? +(totalSessions/activeUsers).toFixed(1) : 0;
+  const repeatRate       = totalQuestions > 0 ? +((totalQuestions-totalUniqueQ)/totalQuestions*100).toFixed(1) : 0;
+
+  const userCounts = {};
+  uq.forEach(r => { const u=r.User_Display||'Unknown'; userCounts[u]=(userCounts[u]||0)+1; });
+  const mostActiveUser = Object.entries(userCounts).sort((a,b)=>b[1]-a[1])[0]?.[0] || '—';
+
+  const totalLikes      = fc.filter(r=>r.Feedback==='LIKE').length;
+  const totalDislikes   = fc.filter(r=>r.Feedback==='DISLIKE').length;
+  const totalFeedback   = fc.filter(r=>toInt(r.Has_Feedback)===1).length;
+  const totalIssues     = sumField(ft,'Is_Issue') + sumField(ft,'Is_Dislike');
+  const sessionDrops    = ft.filter(r=>toInt(r.Is_Context_Drop)===1).length;
+  const kbGaps          = sumField(ft,'Is_KB_Gap');
+  const maskedData      = sumField(ft,'Is_Placeholder_Data');
+  const copilotLoops    = sumField(ft,'Is_Copilot_Loop');
+  const systemErrors    = sumField(ft,'Is_System_Error');
+
+  const botResponses    = bots.length;
+  const nlsqlResp       = fc.filter(r=>r.Bot_Type==='NLSQLAgent').length;
+  const trainingResp    = fc.filter(r=>r.Bot_Type==='Training Bot').length;
+  const copilotResp     = fc.filter(r=>r.Bot_Type==='Copilot Sales Bot').length;
+
+  const totalTokens     = ftu.reduce((s,r)=>s+toInt(r.Total_Tokens),0);
+  const promptTokens    = ftu.reduce((s,r)=>s+toInt(r.Prompt_Tokens),0);
+  const completionToks  = ftu.reduce((s,r)=>s+toInt(r.Completion_Tokens),0);
+  const avgTokPerQ      = +avgField(ftu,'Total_Tokens').toFixed(0);
+  const queriesTracked  = ftu.length;
+  const sessionsTracked = distinctCount(ftu.map(r=>r.Session_ID).filter(Boolean));
+  const sqlSteps        = fls.filter(r=>r.LLM_Step==='first_sql_generation_llm');
+  const avgSqlTok       = +avgField(sqlSteps,'Total_Tokens').toFixed(0);
+  const avgRespTime     = +avgField(fr,'Response_Time_Seconds').toFixed(1);
+
+  // ── Chart Data ────────────────────────────────────────────────────────────
+  const allMonths  = sortMonths([...new Set(fc.map(r=>r.Month).filter(Boolean))]);
+  const ftMonths   = sortMonths([...new Set(ft.map(r=>r.Month).filter(Boolean))]);
+  const rtMonths   = sortMonths([...new Set(fr.map(r=>r.Month).filter(Boolean))]);
+  const tuMonths   = sortMonths([...new Set(ftu.map(r=>r.Month).filter(Boolean))]);
+
+  // Page 1
+  const trendByMonth = allMonths.map(m => {
+    const mr = fc.filter(r=>r.Month===m);
+    return { month:m, questions:mr.filter(r=>toInt(r.Is_User_Question_Flag)===1).length,
+      likes:mr.filter(r=>r.Feedback==='LIKE').length, dislikes:mr.filter(r=>r.Feedback==='DISLIKE').length };
+  });
+  const botTypeDist = Object.entries(groupBy(bots,'Bot_Type')).map(([n,r])=>({name:n,value:r.length})).sort((a,b)=>b.value-a.value);
+  const qByModule   = Object.entries(groupBy(ft,'Module')).filter(([m])=>m).map(([module,r])=>({module,count:r.length})).sort((a,b)=>b.count-a.count).slice(0,12);
+
+  // Page 2
+  const issuesByMonth = ftMonths.map(m => {
+    const mr = ft.filter(r=>r.Month===m);
+    return { month:m, kbGaps:sumField(mr,'Is_KB_Gap'), maskedData:sumField(mr,'Is_Placeholder_Data'),
+      systemErrors:sumField(mr,'Is_System_Error'), copilotLoops:sumField(mr,'Is_Copilot_Loop'), dislikes:sumField(mr,'Is_Dislike') };
+  });
+  const issueBreakdown = [
+    {name:'KB Gaps',value:kbGaps},{name:'Masked Data',value:maskedData},
+    {name:'System Errors',value:systemErrors},{name:'Copilot Loops',value:copilotLoops},
+    {name:'Dislikes',value:sumField(ft,'Is_Dislike')},
+  ].filter(d=>d.value>0);
+  const issuesByBot = Object.entries(groupBy(ft,'Bot_Type')).filter(([b])=>b).map(([bot,rows])=>{
+    const issues=sumField(rows,'Is_Issue')+sumField(rows,'Is_Dislike');
+    const br=fc.filter(r=>r.Bot_Type===bot&&r.Sender_Type==='bot').length;
+    return {bot,issues,rate:br?+((issues/br)*100).toFixed(1):0};
+  }).sort((a,b)=>b.issues-a.issues);
+
+  // Page 3
+  const activeUsersByMonth = allMonths.map(m => {
+    const mr=fcNB.filter(r=>r.Month===m&&toInt(r.Is_User_Question_Flag)===1);
+    return {month:m,activeUsers:distinctCount(mr.map(r=>r.User_Display).filter(Boolean))};
+  });
+  const sessionsByMonth = allMonths.map(m => ({
+    month:m, sessions:distinctCount(fc.filter(r=>r.Month===m).map(r=>r.Session_ID).filter(Boolean)),
+  }));
+  const qVsSessions = allMonths.map(m => {
+    const mr=fc.filter(r=>r.Month===m);
+    return {month:m,questions:mr.filter(r=>toInt(r.Is_User_Question_Flag)===1).length,
+      sessions:distinctCount(mr.map(r=>r.Session_ID).filter(Boolean))};
+  });
+
+  // Page 4
+  const rtByMonth = rtMonths.map(m=>{
+    const mr=fr.filter(r=>r.Month===m); return {month:m,avgTime:+avgField(mr,'Response_Time_Seconds').toFixed(1)};
+  });
+  const rtByBot = Object.entries(groupBy(fr,'Bot_Type')).filter(([b])=>b)
+    .map(([bot,rows])=>({bot,avgTime:+avgField(rows,'Response_Time_Seconds').toFixed(1)})).sort((a,b)=>b.avgTime-a.avgTime);
+  const botTypeNames = [...new Set(bots.map(r=>r.Bot_Type).filter(Boolean))];
+  const botRespByMonth = allMonths.map(m=>{
+    const e={month:m};
+    botTypeNames.forEach(bt=>{ e[bt]=fc.filter(r=>r.Month===m&&r.Bot_Type===bt&&r.Sender_Type==='bot').length; });
+    return e;
+  });
+
+  // Page 5
+  const toksByMonth = tuMonths.map(m=>{
+    const mr=ftu.filter(r=>r.Month===m); return {month:m,totalTokens:mr.reduce((s,r)=>s+toInt(r.Total_Tokens),0)};
+  });
+  const toksByModule = Object.entries(groupBy(ftu,'Module')).filter(([m])=>m)
+    .map(([module,rows])=>({module,totalTokens:rows.reduce((s,r)=>s+toInt(r.Total_Tokens),0)}))
+    .sort((a,b)=>b.totalTokens-a.totalTokens).slice(0,12);
+  const toksByStep = Object.entries(groupBy(fls,'LLM_Step')).filter(([s])=>s)
+    .map(([step,rows])=>({step:LLM_STEP_LABELS[step]||step,avgTokens:+avgField(rows,'Total_Tokens').toFixed(0)}))
+    .sort((a,b)=>b.avgTokens-a.avgTokens);
+
+  return {
+    filterOptions,
+    measures: { totalQuestions, totalUniqueQ, activeUsers, totalSessions, avgQPerUser, avgSessPerUser,
+      repeatRate, mostActiveUser, totalLikes, totalDislikes, totalFeedback, totalIssues,
+      sessionDrops, kbGaps, maskedData, copilotLoops, systemErrors, botResponses, nlsqlResp,
+      trainingResp, copilotResp, totalTokens, promptTokens, completionToks, avgTokPerQ,
+      queriesTracked, sessionsTracked, avgSqlTok, avgRespTime },
+    charts: { trendByMonth, botTypeDist, qByModule, issuesByMonth, issueBreakdown, issuesByBot,
+      activeUsersByMonth, sessionsByMonth, qVsSessions, rtByMonth, rtByBot, botRespByMonth, botTypeNames,
+      toksByMonth, toksByModule, toksByStep },
+  };
+}
+
+// ── Shared Components ──────────────────────────────────────────────────────────
+function KPICard({ label, value, format='number', accent }) {
+  return (
+    <div className="kpi-card">
+      <div className="kpi-label">{label}</div>
+      <div className="kpi-value" style={accent?{color:accent}:{}}>{fmtNum(value, format)}</div>
+    </div>
+  );
+}
+
+function ChartCard({ title, children, minH=280 }) {
+  return (
+    <div className="chart-card" style={{minHeight:minH}}>
+      {title && <div className="chart-title">{title}</div>}
+      {children}
+    </div>
+  );
+}
+
+function CTooltip({ active, payload, label, fmt='number' }) {
+  if (!active||!payload?.length) return null;
+  return (
+    <div className="custom-tt">
+      {label && <div className="tt-label">{label}</div>}
+      {payload.map((e,i)=>(
+        <div key={i} className="tt-row">
+          <span className="tt-dot" style={{background:e.color}}/>
+          <span className="tt-name">{e.name}:</span>
+          <span className="tt-val">{fmtNum(e.value,fmt)}</span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// Donut label
+const R = Math.PI/180;
+const DonutLabel = ({cx,cy,midAngle,innerRadius,outerRadius,percent}) => {
+  if(percent<0.04) return null;
+  const r=innerRadius+(outerRadius-innerRadius)*0.5;
+  const x=cx+r*Math.cos(-midAngle*R), y=cy+r*Math.sin(-midAngle*R);
+  return <text x={x} y={y} fill="white" textAnchor="middle" dominantBaseline="central" fontSize={11}>{`${(percent*100).toFixed(0)}%`}</text>;
+};
+
+const tkAxis = v => v>=1e6?`${(v/1e6).toFixed(1)}M`:v>=1000?`${(v/1000).toFixed(0)}K`:v;
+
+// ── Filter Panel ───────────────────────────────────────────────────────────────
+function FilterPanel({ filterOptions, filters, onChange }) {
+  if (!filterOptions) return <div className="filter-panel"><div style={{color:'#888',fontSize:12,marginTop:20}}>Loading filters…</div></div>;
+  const set = k => v => onChange({...filters,[k]:v});
+  const toggle = (k,val) => {
+    const sel=filters[k]; onChange({...filters,[k]:sel.includes(val)?sel.filter(x=>x!==val):[...sel,val]});
+  };
+  const reset = () => onChange({months:[],botTypes:[],modules:[],questionCategories:[]});
+
+  const Group = ({label,fk,options}) => {
+    const sel=filters[fk];
+    return (
+      <div className="filter-group">
+        <div className="filter-label">
+          {label}
+          {sel.length>0 && <button className="filter-clear" onClick={()=>set(fk)([])} title="Clear">✕</button>}
+        </div>
+        <div className="filter-options">
+          {options.map(opt=>(
+            <button key={opt} className={`filter-chip${sel.includes(opt)?' active':''}`}
+              onClick={()=>toggle(fk,opt)} title={opt}>{opt}</button>
+          ))}
+        </div>
+      </div>
+    );
+  };
+
+  return (
+    <aside className="filter-panel">
+      <div className="filter-panel-header">
+        <span>🔽 Filters</span>
+        <button className="filter-reset-btn" onClick={reset}>Reset all</button>
+      </div>
+      <Group label="Month" fk="months" options={filterOptions.months}/>
+      <Group label="Bot Type" fk="botTypes" options={filterOptions.botTypes}/>
+      <Group label="Module" fk="modules" options={filterOptions.modules}/>
+      <Group label="Question Category" fk="questionCategories" options={filterOptions.questionCategories}/>
+    </aside>
+  );
+}
+
+// ── Page 1: Executive Overview ─────────────────────────────────────────────────
+function ExecutiveOverview({data}) {
+  if(!data) return <div className="page-loading">Loading…</div>;
+  const {measures:m, charts:c} = data;
+  return (
+    <div className="page">
+      <div className="kpi-row">
+        <KPICard label="Total Questions" value={m.totalQuestions}/>
+        <KPICard label="Active Users" value={m.activeUsers}/>
+        <KPICard label="Bot Responses" value={m.botResponses}/>
+        <KPICard label="Total Likes" value={m.totalLikes} accent="#70AD47"/>
+        <KPICard label="Total Dislikes" value={m.totalDislikes} accent="#E74C3C"/>
+        <KPICard label="Session Drops" value={m.sessionDrops} accent="#ED7D31"/>
+        <KPICard label="Repeat Question Rate" value={m.repeatRate} format="percent"/>
+      </div>
+      <div className="chart-row">
+        <ChartCard title="Questions, Likes & Dislikes by Month">
+          <ResponsiveContainer width="100%" height={240}>
+            <LineChart data={c.trendByMonth} margin={{top:5,right:16,left:0,bottom:5}}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#E0E0E0"/>
+              <XAxis dataKey="month" tick={{fontSize:11}}/>
+              <YAxis tick={{fontSize:11}}/>
+              <Tooltip content={<CTooltip/>}/>
+              <Legend wrapperStyle={{fontSize:12}}/>
+              <Line type="monotone" dataKey="questions" name="Questions" stroke="#4472C4" strokeWidth={2} dot={{r:3}}/>
+              <Line type="monotone" dataKey="likes" name="Likes" stroke="#70AD47" strokeWidth={2} dot={{r:3}}/>
+              <Line type="monotone" dataKey="dislikes" name="Dislikes" stroke="#E74C3C" strokeWidth={2} dot={{r:3}}/>
+            </LineChart>
+          </ResponsiveContainer>
+        </ChartCard>
+        <ChartCard title="Bot Type Distribution">
+          <ResponsiveContainer width="100%" height={240}>
+            <PieChart>
+              <Pie data={c.botTypeDist} cx="50%" cy="50%" innerRadius={55} outerRadius={95} dataKey="value" labelLine={false} label={DonutLabel}>
+                {c.botTypeDist.map((e,i)=><Cell key={e.name} fill={COLORS[i%COLORS.length]}/>)}
+              </Pie>
+              <Tooltip formatter={(v,n)=>[fmtNum(v),n]} contentStyle={{fontSize:12}}/>
+              <Legend wrapperStyle={{fontSize:12}} formatter={(v,e)=>`${v} (${fmtNum(e.payload.value)})`}/>
+            </PieChart>
+          </ResponsiveContainer>
+        </ChartCard>
+      </div>
+      <div className="chart-row single">
+        <ChartCard title="Questions by ERP Module" minH={260}>
+          <ResponsiveContainer width="100%" height={220}>
+            <BarChart layout="vertical" data={c.qByModule} margin={{top:5,right:24,left:16,bottom:5}}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#E0E0E0" horizontal={false}/>
+              <XAxis type="number" tick={{fontSize:11}}/>
+              <YAxis dataKey="module" type="category" tick={{fontSize:11}} width={120}/>
+              <Tooltip contentStyle={{fontSize:12}}/>
+              <Bar dataKey="count" name="Questions" fill="#4472C4" radius={[0,3,3,0]}/>
+            </BarChart>
+          </ResponsiveContainer>
+        </ChartCard>
+      </div>
+    </div>
+  );
+}
+
+// ── Page 2: Issue Analysis ─────────────────────────────────────────────────────
+function IssueAnalysis({data}) {
+  if(!data) return <div className="page-loading">Loading…</div>;
+  const {measures:m, charts:c} = data;
+  return (
+    <div className="page">
+      <div className="kpi-row">
+        <KPICard label="Total Issues" value={m.totalIssues} accent="#E74C3C"/>
+        <KPICard label="KB Gaps" value={m.kbGaps} accent="#ED7D31"/>
+        <KPICard label="System Errors" value={m.systemErrors} accent="#E74C3C"/>
+        <KPICard label="Masked Data" value={m.maskedData} accent="#A5A5A5"/>
+        <KPICard label="Copilot Loops" value={m.copilotLoops} accent="#FFC000"/>
+        <KPICard label="Session Drops" value={m.sessionDrops} accent="#ED7D31"/>
+      </div>
+      <div className="chart-row">
+        <ChartCard title="Issues by Month (Stacked)">
+          <ResponsiveContainer width="100%" height={240}>
+            <BarChart data={c.issuesByMonth} margin={{top:5,right:16,left:0,bottom:5}}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#E0E0E0"/>
+              <XAxis dataKey="month" tick={{fontSize:11}}/>
+              <YAxis tick={{fontSize:11}}/>
+              <Tooltip contentStyle={{fontSize:12}}/>
+              <Legend wrapperStyle={{fontSize:12}}/>
+              <Bar dataKey="kbGaps" name="KB Gaps" stackId="a" fill="#4472C4"/>
+              <Bar dataKey="maskedData" name="Masked Data" stackId="a" fill="#ED7D31"/>
+              <Bar dataKey="systemErrors" name="System Errors" stackId="a" fill="#E74C3C"/>
+              <Bar dataKey="copilotLoops" name="Copilot Loops" stackId="a" fill="#FFC000"/>
+              <Bar dataKey="dislikes" name="Dislikes" stackId="a" fill="#A5A5A5" radius={[3,3,0,0]}/>
+            </BarChart>
+          </ResponsiveContainer>
+        </ChartCard>
+        <ChartCard title="Issue Breakdown">
+          <ResponsiveContainer width="100%" height={240}>
+            <PieChart>
+              <Pie data={c.issueBreakdown} cx="50%" cy="50%" innerRadius={55} outerRadius={95} dataKey="value" labelLine={false} label={DonutLabel}>
+                {c.issueBreakdown.map((e,i)=><Cell key={e.name} fill={COLORS[i%COLORS.length]}/>)}
+              </Pie>
+              <Tooltip formatter={(v,n)=>[fmtNum(v),n]} contentStyle={{fontSize:12}}/>
+              <Legend wrapperStyle={{fontSize:12}}/>
+            </PieChart>
+          </ResponsiveContainer>
+        </ChartCard>
+      </div>
+      <div className="chart-row single">
+        <ChartCard title="Issues by Bot Type" minH={240}>
+          <ResponsiveContainer width="100%" height={200}>
+            <BarChart layout="vertical" data={c.issuesByBot} margin={{top:5,right:24,left:16,bottom:5}}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#E0E0E0" horizontal={false}/>
+              <XAxis type="number" tick={{fontSize:11}}/>
+              <YAxis dataKey="bot" type="category" tick={{fontSize:11}} width={130}/>
+              <Tooltip contentStyle={{fontSize:12}}/>
+              <Bar dataKey="issues" name="Total Issues" fill="#E74C3C" radius={[0,3,3,0]}/>
+            </BarChart>
+          </ResponsiveContainer>
+        </ChartCard>
+      </div>
+    </div>
+  );
+}
+
+// ── Page 3: User Activity ──────────────────────────────────────────────────────
+function UserActivity({data}) {
+  if(!data) return <div className="page-loading">Loading…</div>;
+  const {measures:m, charts:c} = data;
+  return (
+    <div className="page">
+      <div className="kpi-row">
+        <KPICard label="Total Sessions" value={m.totalSessions}/>
+        <KPICard label="Active Users" value={m.activeUsers}/>
+        <KPICard label="Avg Questions / User" value={m.avgQPerUser} format="decimal"/>
+        <KPICard label="Avg Sessions / User" value={m.avgSessPerUser} format="decimal"/>
+        <KPICard label="Most Active User" value={m.mostActiveUser} format="text"/>
+      </div>
+      <div className="chart-row">
+        <ChartCard title="Active Users by Month">
+          <ResponsiveContainer width="100%" height={240}>
+            <AreaChart data={c.activeUsersByMonth} margin={{top:5,right:16,left:0,bottom:5}}>
+              <defs>
+                <linearGradient id="gU" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="5%" stopColor="#4472C4" stopOpacity={0.3}/>
+                  <stop offset="95%" stopColor="#4472C4" stopOpacity={0}/>
+                </linearGradient>
+              </defs>
+              <CartesianGrid strokeDasharray="3 3" stroke="#E0E0E0"/>
+              <XAxis dataKey="month" tick={{fontSize:11}}/>
+              <YAxis tick={{fontSize:11}}/>
+              <Tooltip contentStyle={{fontSize:12}}/>
+              <Area type="monotone" dataKey="activeUsers" name="Active Users" stroke="#4472C4" strokeWidth={2} fill="url(#gU)" dot={{r:3}}/>
+            </AreaChart>
+          </ResponsiveContainer>
+        </ChartCard>
+        <ChartCard title="Sessions by Month">
+          <ResponsiveContainer width="100%" height={240}>
+            <BarChart data={c.sessionsByMonth} margin={{top:5,right:16,left:0,bottom:5}}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#E0E0E0"/>
+              <XAxis dataKey="month" tick={{fontSize:11}}/>
+              <YAxis tick={{fontSize:11}}/>
+              <Tooltip contentStyle={{fontSize:12}}/>
+              <Bar dataKey="sessions" name="Sessions" fill="#ED7D31" radius={[3,3,0,0]}/>
+            </BarChart>
+          </ResponsiveContainer>
+        </ChartCard>
+      </div>
+      <div className="chart-row single">
+        <ChartCard title="Questions vs Sessions Trend" minH={260}>
+          <ResponsiveContainer width="100%" height={220}>
+            <LineChart data={c.qVsSessions} margin={{top:5,right:16,left:0,bottom:5}}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#E0E0E0"/>
+              <XAxis dataKey="month" tick={{fontSize:11}}/>
+              <YAxis tick={{fontSize:11}}/>
+              <Tooltip contentStyle={{fontSize:12}}/>
+              <Legend wrapperStyle={{fontSize:12}}/>
+              <Line type="monotone" dataKey="questions" name="Questions" stroke="#4472C4" strokeWidth={2} dot={{r:3}}/>
+              <Line type="monotone" dataKey="sessions" name="Sessions" stroke="#ED7D31" strokeWidth={2} dot={{r:3}} strokeDasharray="5 3"/>
+            </LineChart>
+          </ResponsiveContainer>
+        </ChartCard>
+      </div>
+    </div>
+  );
+}
+
+// ── Page 4: Bot Performance ────────────────────────────────────────────────────
+function BotPerformance({data}) {
+  if(!data) return <div className="page-loading">Loading…</div>;
+  const {measures:m, charts:c} = data;
+  return (
+    <div className="page">
+      <div className="kpi-row">
+        <KPICard label="Avg Response Time" value={m.avgRespTime} format="time"/>
+        <KPICard label="NLSQLAgent Responses" value={m.nlsqlResp}/>
+        <KPICard label="Training Bot Responses" value={m.trainingResp}/>
+        <KPICard label="Copilot Sales Bot" value={m.copilotResp}/>
+        <KPICard label="Total Bot Responses" value={m.botResponses}/>
+      </div>
+      <div className="chart-row">
+        <ChartCard title="Avg Response Time by Month">
+          <ResponsiveContainer width="100%" height={240}>
+            <LineChart data={c.rtByMonth} margin={{top:5,right:16,left:0,bottom:5}}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#E0E0E0"/>
+              <XAxis dataKey="month" tick={{fontSize:11}}/>
+              <YAxis tick={{fontSize:11}} unit="s"/>
+              <Tooltip contentStyle={{fontSize:12}} formatter={v=>[`${v}s`,'Avg Time']}/>
+              <Line type="monotone" dataKey="avgTime" name="Avg Response Time" stroke="#4472C4" strokeWidth={2} dot={{r:3}}/>
+            </LineChart>
+          </ResponsiveContainer>
+        </ChartCard>
+        <ChartCard title="Avg Response Time by Bot Type">
+          <ResponsiveContainer width="100%" height={240}>
+            <BarChart layout="vertical" data={c.rtByBot} margin={{top:5,right:24,left:16,bottom:5}}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#E0E0E0" horizontal={false}/>
+              <XAxis type="number" tick={{fontSize:11}} unit="s"/>
+              <YAxis dataKey="bot" type="category" tick={{fontSize:11}} width={130}/>
+              <Tooltip contentStyle={{fontSize:12}} formatter={v=>[`${v}s`,'Avg Time']}/>
+              <Bar dataKey="avgTime" name="Avg Response Time (s)" fill="#4472C4" radius={[0,3,3,0]}/>
+            </BarChart>
+          </ResponsiveContainer>
+        </ChartCard>
+      </div>
+      <div className="chart-row single">
+        <ChartCard title="Bot Responses by Month" minH={260}>
+          <ResponsiveContainer width="100%" height={220}>
+            <BarChart data={c.botRespByMonth} margin={{top:5,right:16,left:0,bottom:5}}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#E0E0E0"/>
+              <XAxis dataKey="month" tick={{fontSize:11}}/>
+              <YAxis tick={{fontSize:11}}/>
+              <Tooltip contentStyle={{fontSize:12}}/>
+              <Legend wrapperStyle={{fontSize:12}}/>
+              {c.botTypeNames.map((bt,i)=>(
+                <Bar key={bt} dataKey={bt} name={bt} fill={COLORS[i%COLORS.length]} radius={i===c.botTypeNames.length-1?[3,3,0,0]:[0,0,0,0]}/>
+              ))}
+            </BarChart>
+          </ResponsiveContainer>
+        </ChartCard>
+      </div>
+    </div>
+  );
+}
+
+// ── Page 5: Token Usage ────────────────────────────────────────────────────────
+function TokenUsage({data}) {
+  if(!data) return <div className="page-loading">Loading…</div>;
+  const {measures:m, charts:c} = data;
+  return (
+    <div className="page">
+      <div className="kpi-row">
+        <KPICard label="Total Tokens" value={m.totalTokens} format="tokens"/>
+        <KPICard label="Queries Tracked" value={m.queriesTracked}/>
+        <KPICard label="Sessions Tracked" value={m.sessionsTracked}/>
+        <KPICard label="Avg Tokens / Question" value={m.avgTokPerQ}/>
+        <KPICard label="Avg SQL Tokens" value={m.avgSqlTok}/>
+      </div>
+      <div className="chart-row single">
+        <ChartCard title="Total Tokens by Month" minH={260}>
+          <ResponsiveContainer width="100%" height={220}>
+            <AreaChart data={c.toksByMonth} margin={{top:5,right:16,left:20,bottom:5}}>
+              <defs>
+                <linearGradient id="gT" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="5%" stopColor="#4472C4" stopOpacity={0.3}/>
+                  <stop offset="95%" stopColor="#4472C4" stopOpacity={0}/>
+                </linearGradient>
+              </defs>
+              <CartesianGrid strokeDasharray="3 3" stroke="#E0E0E0"/>
+              <XAxis dataKey="month" tick={{fontSize:11}}/>
+              <YAxis tickFormatter={tkAxis} tick={{fontSize:11}}/>
+              <Tooltip contentStyle={{fontSize:12}} formatter={v=>[fmtNum(v,'tokens'),'Total Tokens']}/>
+              <Area type="monotone" dataKey="totalTokens" name="Total Tokens" stroke="#4472C4" strokeWidth={2} fill="url(#gT)" dot={{r:3}}/>
+            </AreaChart>
+          </ResponsiveContainer>
+        </ChartCard>
+      </div>
+      <div className="chart-row">
+        <ChartCard title="Total Tokens by ERP Module" minH={300}>
+          <ResponsiveContainer width="100%" height={260}>
+            <BarChart layout="vertical" data={c.toksByModule} margin={{top:5,right:24,left:16,bottom:5}}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#E0E0E0" horizontal={false}/>
+              <XAxis type="number" tickFormatter={tkAxis} tick={{fontSize:11}}/>
+              <YAxis dataKey="module" type="category" tick={{fontSize:11}} width={120}/>
+              <Tooltip contentStyle={{fontSize:12}} formatter={v=>[fmtNum(v,'tokens'),'Total Tokens']}/>
+              <Bar dataKey="totalTokens" name="Total Tokens" fill="#4472C4" radius={[0,3,3,0]}/>
+            </BarChart>
+          </ResponsiveContainer>
+        </ChartCard>
+        <ChartCard title="Avg Tokens by LLM Step" minH={300}>
+          <ResponsiveContainer width="100%" height={260}>
+            <BarChart layout="vertical" data={c.toksByStep} margin={{top:5,right:24,left:16,bottom:5}}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#E0E0E0" horizontal={false}/>
+              <XAxis type="number" tick={{fontSize:11}}/>
+              <YAxis dataKey="step" type="category" tick={{fontSize:11}} width={140}/>
+              <Tooltip contentStyle={{fontSize:12}} formatter={v=>[v.toLocaleString(),'Avg Tokens']}/>
+              <Bar dataKey="avgTokens" name="Avg Tokens" fill="#ED7D31" radius={[0,3,3,0]}/>
+            </BarChart>
+          </ResponsiveContainer>
+        </ChartCard>
+      </div>
+    </div>
+  );
+}
+
+// ── App ────────────────────────────────────────────────────────────────────────
+const TABS = [
+  {id:'overview', label:'📊 Executive Overview'},
+  {id:'issues',   label:'⚠️ Issue Analysis'},
+  {id:'users',    label:'👥 User Activity'},
+  {id:'bots',     label:'🤖 Bot Performance'},
+  {id:'tokens',   label:'🔢 Token Usage'},
+];
+const DEF_FILTERS = {months:[],botTypes:[],modules:[],questionCategories:[]};
+
+function App() {
+  const [tab, setTab]         = useState('overview');
+  const [filters, setFilters] = useState(DEF_FILTERS);
+  const [wb, setWb]           = useState(null);   // cached workbook
+  const [data, setData]       = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError]     = useState(null);
+  const fileRef               = useRef();
+
+  const loadWb = useCallback(async (workbook, activeFilters) => {
+    setLoading(true);
+    setError(null);
+    try {
+      const result = computeData(workbook, activeFilters);
+      setData(result);
+    } catch(e) {
+      setError(e.message);
+    } finally { setLoading(false); }
+  }, []);
+
+  // Auto-fetch on mount
+  useEffect(() => {
+    (async () => {
+      try {
+        const resp = await fetch('./AskMe_Dashboard_Data.xlsx');
+        if (!resp.ok) throw new Error('not found');
+        const buf  = await resp.arrayBuffer();
+        const workbook = XLSX.read(buf, {type:'array'});
+        setWb(workbook);
+        await loadWb(workbook, DEF_FILTERS);
+      } catch {
+        setLoading(false);
+        setError('Could not auto-load the Excel file. Please use the file picker.');
+      }
+    })();
+  }, [loadWb]);
+
+  const onFileChange = async e => {
+    const file = e.target.files[0];
+    if (!file) return;
+    setLoading(true);
+    setError(null);
+    try {
+      const buf = await file.arrayBuffer();
+      const workbook = XLSX.read(buf, {type:'array'});
+      setWb(workbook);
+      await loadWb(workbook, DEF_FILTERS);
+      setFilters(DEF_FILTERS);
+    } catch(e) { setError(e.message); setLoading(false); }
+  };
+
+  const onFilterChange = f => {
+    setFilters(f);
+    if (wb) loadWb(wb, f);
+  };
+
+  const renderPage = () => {
+    if (loading) return <div className="loading-screen"><div className="spinner"/><div>Loading dashboard…</div></div>;
+    if (error)   return (
+      <div className="error-screen">
+        <h2>⚠️ Data not loaded</h2>
+        <p>{error}</p>
+        <input type="file" accept=".xlsx" ref={fileRef} id="filePicker" onChange={onFileChange}/>
+        <button className="file-pick-btn" onClick={()=>fileRef.current.click()}>📂 Open AskMe_Dashboard_Data.xlsx</button>
+        <p style={{marginTop:8,fontSize:11,color:'#aaa'}}>Or place the file in the same folder as this HTML and refresh.</p>
+      </div>
+    );
+    switch(tab) {
+      case 'overview': return <ExecutiveOverview data={data}/>;
+      case 'issues':   return <IssueAnalysis data={data}/>;
+      case 'users':    return <UserActivity data={data}/>;
+      case 'bots':     return <BotPerformance data={data}/>;
+      case 'tokens':   return <TokenUsage data={data}/>;
+      default:         return null;
+    }
+  };
+
+  return (
+    <div className="app-shell">
+      <header className="app-header">
+        <h1>AskMe Analytics Dashboard</h1>
+        <span className="header-sub">AI Assistant Performance &amp; Usage Intelligence</span>
+        {wb && !loading && !error && (
+          <span style={{marginLeft:'auto',fontSize:11,opacity:.7,cursor:'pointer'}} onClick={()=>fileRef.current.click()}>
+            📂 Load different file
+          </span>
+        )}
+        <input type="file" accept=".xlsx" ref={fileRef} style={{display:'none'}} onChange={onFileChange}/>
+      </header>
+      <nav className="tab-bar">
+        {TABS.map(t=>(
+          <button key={t.id} className={`tab-btn${tab===t.id?' active':''}`} onClick={()=>setTab(t.id)}>{t.label}</button>
+        ))}
+      </nav>
+      <div className="main-layout">
+        <FilterPanel filterOptions={data?.filterOptions} filters={filters} onChange={onFilterChange}/>
+        <main className="page-content">{renderPage()}</main>
+      </div>
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(<App/>);
+</script>
+</body>
+</html>
