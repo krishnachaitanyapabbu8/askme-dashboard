@@ -211,7 +211,7 @@ export async function loadDashboardData(filters = {}) {
 
   // Issue rate: decimal ratio (PBI shows 0.05, not 5%)
   const overallIssueRateByBot = botResponses > 0
-    ? +((totalIssues / botResponses)).toFixed(2) : 0;
+    ? +((totalIssues / botResponses) * 100).toFixed(1) : 0;
 
   // ── Tokens / Performance ───────────────────────────────────────────────────
 

@@ -19,7 +19,7 @@ export default function BotPerformance({ data }) {
         <KPICard label="NLSQLAgent Responses"       value={m.nlsqlResponses} />
         <KPICard label="Training Bot Responses"     value={m.trainingBotResponses} />
         <KPICard label="Copilot Sales Bot Responses" value={m.copilotSalesResponses} />
-        <KPICard label="Issue Rate by Bot"          value={m.overallIssueRateByBot} format="decimal" accent="#ED7D31" />
+        <KPICard label="Issue Rate by Bot"          value={m.overallIssueRateByBot} format="percent" accent="#ED7D31" />
         <KPICard label="Avg Response Time (sec)"    value={m.avgResponseTime} format="time" />
       </div>
 
