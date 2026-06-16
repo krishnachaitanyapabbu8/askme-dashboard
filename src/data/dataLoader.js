@@ -173,7 +173,7 @@ export async function loadDashboardData(filters = {}) {
 
   const userQuestions     = fc.filter(r => toInt(r.Is_User_Question_Flag) === 1);
   const userQuestionsNoBt = fcNoBt.filter(r => toInt(r.Is_User_Question_Flag) === 1);
-  const botRows           = fc.filter(r => r.Sender_Type === 'bot');
+  const botRows           = fc.filter(r => r.Sender_Type === 'bot' && r.Bot_Type !== 'Unknown');
 
   // ── Volume / Users ─────────────────────────────────────────────────────────
 
@@ -194,9 +194,6 @@ export async function loadDashboardData(filters = {}) {
   const totalDislikes = fc.filter(r => r.Feedback === 'DISLIKE').length;
 
   // ── Issues ─────────────────────────────────────────────────────────────────
-  // All issue flags come from standalone PowerBI_Flat_Table (one row per Q&A exchange).
-  // This matches PBI exactly: Is_Issue=112, KB_Gap=52, System_Error=20,
-  // Masked=31, Copilot_Loop=9, Context_Drop=165.
 
   const totalIssues  = sumField(ft, 'Is_Issue');
   const kbGaps       = sumField(ft, 'Is_KB_Gap');
@@ -415,7 +412,7 @@ export async function loadDashboardData(filters = {}) {
   const likesByBot = (() => {
     const byBot = groupBy(fc, 'Bot_Type');
     return Object.entries(byBot)
-      .filter(([b]) => b)
+      .filter(([b]) => b && b !== 'Unknown' && b !== 'Human')
       .map(([bot, rows]) => ({
         bot,
         likes:    rows.filter(r => r.Feedback === 'LIKE').length,
@@ -434,7 +431,7 @@ export async function loadDashboardData(filters = {}) {
   const tokensByModule = (() => {
     const byMod = groupBy(ftu, 'Module_Clean');
     return Object.entries(byMod)
-      .filter(([m]) => m)
+      .filter(([m]) => m && m !== 'Unknown')
       .map(([module, rows]) => ({
         module,
         totalTokens: rows.reduce((s, r) => s + toInt(r.Total_Tokens), 0),
