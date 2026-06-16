@@ -22,7 +22,7 @@ const toFloat = (v) => { const n = parseFloat(v);   return isNaN(n) ? 0 : n; };
 const distinctCount = (arr) => new Set(arr).size;
 const groupBy = (arr, key) =>
   arr.reduce((acc, row) => {
-    const k = row[key] ?? 'Unknown';
+    const k = row[key] ?? '';
     if (!acc[k]) acc[k] = [];
     acc[k].push(row);
     return acc;
