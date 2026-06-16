@@ -6,6 +6,7 @@ on:
       - 'logs/*.xlsx'
       - 'logs/*.xls'
       - 'logs/*.csv'
+  workflow_dispatch:
 
 jobs:
   process-logs:
