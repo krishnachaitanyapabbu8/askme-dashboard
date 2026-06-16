@@ -333,7 +333,8 @@ export async function loadDashboardData(filters = {}) {
   const sessionToModule = {};
   flatTable.forEach(r => { if (r.Session_ID && r.Module) sessionToModule[r.Session_ID] = r.Module; });
 
-  const topUsers = questionsByUser.slice(0, 8).map(x => x.user);
+  // All users — stacked charts slice to selected top N client-side
+  const topUsers = questionsByUser.map(x => x.user);
 
   // Top 5 modules
   const chartModules = (() => {

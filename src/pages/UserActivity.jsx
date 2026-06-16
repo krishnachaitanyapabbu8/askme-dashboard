@@ -8,6 +8,7 @@ import ChartCard from '../components/ChartCard';
 
 const COLORS = ['#4472C4', '#ED7D31', '#A5A5A5', '#FFC000', '#70AD47', '#FF0000'];
 const AL = { style: { textAnchor: 'middle', fontSize: 11, fill: '#94A3B8' } };
+const BAR_H = 36;
 
 export default function UserActivity({ data }) {
   if (!data) return <div className="page-loading">Loading…</div>;
@@ -26,20 +27,23 @@ export default function UserActivity({ data }) {
 
       {/* Row 1: Questions by User | Active Users by Month */}
       <div className="chart-row">
-        <ChartCard title="Questions by User" scrollable minHeight={320}>
-          <ResponsiveContainer width="100%" height={Math.max(280, c.questionsByUser.length * 36)}>
-            <BarChart
-              layout="vertical" data={c.questionsByUser}
-              margin={{ top: 5, right: 30, left: 20, bottom: 25 }}
-            >
-              <CartesianGrid strokeDasharray="3 3" stroke="#E0E0E0" horizontal={false} />
-              <XAxis type="number" tick={{ fontSize: 11 }}
-                label={{ value: 'Questions', position: 'insideBottom', offset: -8, ...AL }} />
-              <YAxis dataKey="user" type="category" tick={{ fontSize: 10 }} width={140} />
-              <Tooltip contentStyle={{ fontSize: 12 }} />
-              <Bar dataKey="count" name="Questions" fill="#4472C4" radius={[0, 3, 3, 0]} />
-            </BarChart>
-          </ResponsiveContainer>
+        <ChartCard title="Questions by User" scrollable minHeight={320} topNOptions={[10, 20, 'all']}>
+          {(n) => {
+            const d = c.questionsByUser.slice(0, n);
+            return (
+              <ResponsiveContainer width="100%" height={Math.max(280, d.length * BAR_H)}>
+                <BarChart layout="vertical" data={d}
+                  margin={{ top: 5, right: 30, left: 20, bottom: 25 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#E0E0E0" horizontal={false} />
+                  <XAxis type="number" tick={{ fontSize: 11 }}
+                    label={{ value: 'Questions', position: 'insideBottom', offset: -8, ...AL }} />
+                  <YAxis dataKey="user" type="category" tick={{ fontSize: 10 }} width={140} />
+                  <Tooltip contentStyle={{ fontSize: 12 }} />
+                  <Bar dataKey="count" name="Questions" fill="#4472C4" radius={[0, 3, 3, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            );
+          }}
         </ChartCard>
 
         <ChartCard title="Active Users by Month" minHeight={320}>
@@ -50,10 +54,8 @@ export default function UserActivity({ data }) {
               <YAxis tick={{ fontSize: 11 }}
                 label={{ value: 'Users', angle: -90, position: 'insideLeft', offset: 10, ...AL }} />
               <Tooltip contentStyle={{ fontSize: 12 }} />
-              <Line
-                type="monotone" dataKey="activeUsers" name="Active Users"
-                stroke="#4472C4" strokeWidth={2} dot={{ r: 3 }} activeDot={{ r: 5 }}
-              />
+              <Line type="monotone" dataKey="activeUsers" name="Active Users"
+                stroke="#4472C4" strokeWidth={2} dot={{ r: 3 }} activeDot={{ r: 5 }} />
             </LineChart>
           </ResponsiveContainer>
         </ChartCard>
@@ -61,46 +63,52 @@ export default function UserActivity({ data }) {
 
       {/* Row 2: Questions by User per Module | Questions by Category per User */}
       <div className="chart-row">
-        <ChartCard title="Questions by User per Module" minHeight={320}>
-          <ResponsiveContainer width="100%" height={280}>
-            <BarChart
-              layout="vertical" data={c.questionsByUserModule}
-              margin={{ top: 5, right: 30, left: 20, bottom: 25 }}
-            >
-              <CartesianGrid strokeDasharray="3 3" stroke="#E0E0E0" horizontal={false} />
-              <XAxis type="number" tick={{ fontSize: 11 }}
-                label={{ value: 'Questions', position: 'insideBottom', offset: -8, ...AL }} />
-              <YAxis dataKey="user" type="category" tick={{ fontSize: 10 }} width={140} />
-              <Tooltip contentStyle={{ fontSize: 12 }} />
-              <Legend wrapperStyle={{ fontSize: 11 }} />
-              {c.chartModules.map((mod, i) => (
-                <Bar key={mod} dataKey={mod} name={mod} stackId="mod"
-                  fill={COLORS[i % COLORS.length]}
-                  radius={i === c.chartModules.length - 1 ? [0, 3, 3, 0] : [0, 0, 0, 0]} />
-              ))}
-            </BarChart>
-          </ResponsiveContainer>
+        <ChartCard title="Questions by User per Module" scrollable minHeight={320} topNOptions={[10, 20, 'all']}>
+          {(n) => {
+            const d = c.questionsByUserModule.slice(0, n);
+            return (
+              <ResponsiveContainer width="100%" height={Math.max(280, d.length * BAR_H)}>
+                <BarChart layout="vertical" data={d}
+                  margin={{ top: 5, right: 30, left: 20, bottom: 25 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#E0E0E0" horizontal={false} />
+                  <XAxis type="number" tick={{ fontSize: 11 }}
+                    label={{ value: 'Questions', position: 'insideBottom', offset: -8, ...AL }} />
+                  <YAxis dataKey="user" type="category" tick={{ fontSize: 10 }} width={140} />
+                  <Tooltip contentStyle={{ fontSize: 12 }} />
+                  <Legend wrapperStyle={{ fontSize: 11 }} />
+                  {c.chartModules.map((mod, i) => (
+                    <Bar key={mod} dataKey={mod} name={mod} stackId="mod"
+                      fill={COLORS[i % COLORS.length]}
+                      radius={i === c.chartModules.length - 1 ? [0, 3, 3, 0] : [0, 0, 0, 0]} />
+                  ))}
+                </BarChart>
+              </ResponsiveContainer>
+            );
+          }}
         </ChartCard>
 
-        <ChartCard title="Questions by Category per User" minHeight={320}>
-          <ResponsiveContainer width="100%" height={280}>
-            <BarChart
-              layout="vertical" data={c.questionsByUserCategory}
-              margin={{ top: 5, right: 30, left: 20, bottom: 25 }}
-            >
-              <CartesianGrid strokeDasharray="3 3" stroke="#E0E0E0" horizontal={false} />
-              <XAxis type="number" tick={{ fontSize: 11 }}
-                label={{ value: 'Questions', position: 'insideBottom', offset: -8, ...AL }} />
-              <YAxis dataKey="user" type="category" tick={{ fontSize: 10 }} width={140} />
-              <Tooltip contentStyle={{ fontSize: 12 }} />
-              <Legend wrapperStyle={{ fontSize: 11 }} />
-              {c.chartCategories.map((cat, i) => (
-                <Bar key={cat} dataKey={cat} name={cat} stackId="cat"
-                  fill={COLORS[i % COLORS.length]}
-                  radius={i === c.chartCategories.length - 1 ? [0, 3, 3, 0] : [0, 0, 0, 0]} />
-              ))}
-            </BarChart>
-          </ResponsiveContainer>
+        <ChartCard title="Questions by Category per User" scrollable minHeight={320} topNOptions={[10, 20, 'all']}>
+          {(n) => {
+            const d = c.questionsByUserCategory.slice(0, n);
+            return (
+              <ResponsiveContainer width="100%" height={Math.max(280, d.length * BAR_H)}>
+                <BarChart layout="vertical" data={d}
+                  margin={{ top: 5, right: 30, left: 20, bottom: 25 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#E0E0E0" horizontal={false} />
+                  <XAxis type="number" tick={{ fontSize: 11 }}
+                    label={{ value: 'Questions', position: 'insideBottom', offset: -8, ...AL }} />
+                  <YAxis dataKey="user" type="category" tick={{ fontSize: 10 }} width={140} />
+                  <Tooltip contentStyle={{ fontSize: 12 }} />
+                  <Legend wrapperStyle={{ fontSize: 11 }} />
+                  {c.chartCategories.map((cat, i) => (
+                    <Bar key={cat} dataKey={cat} name={cat} stackId="cat"
+                      fill={COLORS[i % COLORS.length]}
+                      radius={i === c.chartCategories.length - 1 ? [0, 3, 3, 0] : [0, 0, 0, 0]} />
+                  ))}
+                </BarChart>
+              </ResponsiveContainer>
+            );
+          }}
         </ChartCard>
       </div>
     </div>

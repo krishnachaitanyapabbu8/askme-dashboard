@@ -328,6 +328,38 @@ body {
   flex-shrink: 0;
 }
 
+.chart-top-n {
+  margin-left: auto;
+  display: flex;
+  gap: 3px;
+  flex-shrink: 0;
+}
+
+.top-n-btn {
+  background: none;
+  border: 1px solid #E2E8F0;
+  border-radius: 4px;
+  padding: 2px 7px;
+  font-size: 10px;
+  font-family: inherit;
+  font-weight: 600;
+  cursor: pointer;
+  color: #94A3B8;
+  transition: all 0.12s;
+  line-height: 1.5;
+}
+
+.top-n-btn:hover {
+  border-color: #4472C4;
+  color: #4472C4;
+}
+
+.top-n-btn.active {
+  background: #4472C4;
+  border-color: #4472C4;
+  color: #fff;
+}
+
 .chart-body {
   width: 100%;
 }

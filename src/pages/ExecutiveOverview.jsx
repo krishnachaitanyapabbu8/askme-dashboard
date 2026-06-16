@@ -8,6 +8,7 @@ import ChartCard from '../components/ChartCard';
 
 const COLORS = ['#4472C4', '#ED7D31', '#A5A5A5', '#FFC000', '#70AD47', '#FF0000'];
 const AL = { style: { textAnchor: 'middle', fontSize: 11, fill: '#94A3B8' } };
+const BAR_H = 36;
 
 export default function ExecutiveOverview({ data }) {
   if (!data) return <div className="page-loading">Loading…</div>;
@@ -42,11 +43,8 @@ export default function ExecutiveOverview({ data }) {
 
         <ChartCard title="Bot Responses by Bot Type" minHeight={300}>
           <ResponsiveContainer width="100%" height={260}>
-            <BarChart
-              layout="vertical"
-              data={c.botResponsesByBotType}
-              margin={{ top: 5, right: 30, left: 20, bottom: 25 }}
-            >
+            <BarChart layout="vertical" data={c.botResponsesByBotType}
+              margin={{ top: 5, right: 30, left: 20, bottom: 25 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="#E0E0E0" horizontal={false} />
               <XAxis type="number" tick={{ fontSize: 11 }}
                 label={{ value: 'Responses', position: 'insideBottom', offset: -8, ...AL }} />
@@ -75,21 +73,23 @@ export default function ExecutiveOverview({ data }) {
           </ResponsiveContainer>
         </ChartCard>
 
-        <ChartCard title="Questions by ERP Module" scrollable minHeight={300}>
-          <ResponsiveContainer width="100%" height={Math.max(260, c.questionsByModule.length * 36)}>
-            <BarChart
-              layout="vertical"
-              data={c.questionsByModule}
-              margin={{ top: 5, right: 30, left: 20, bottom: 25 }}
-            >
-              <CartesianGrid strokeDasharray="3 3" stroke="#E0E0E0" horizontal={false} />
-              <XAxis type="number" tick={{ fontSize: 11 }}
-                label={{ value: 'Count', position: 'insideBottom', offset: -8, ...AL }} />
-              <YAxis dataKey="module" type="category" tick={{ fontSize: 11 }} width={120} />
-              <Tooltip contentStyle={{ fontSize: 12 }} />
-              <Bar dataKey="count" name="Questions" fill="#4472C4" radius={[0, 3, 3, 0]} />
-            </BarChart>
-          </ResponsiveContainer>
+        <ChartCard title="Questions by ERP Module" scrollable minHeight={300} topNOptions={[10, 20, 'all']}>
+          {(n) => {
+            const d = c.questionsByModule.slice(0, n);
+            return (
+              <ResponsiveContainer width="100%" height={Math.max(260, d.length * BAR_H)}>
+                <BarChart layout="vertical" data={d}
+                  margin={{ top: 5, right: 30, left: 20, bottom: 25 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#E0E0E0" horizontal={false} />
+                  <XAxis type="number" tick={{ fontSize: 11 }}
+                    label={{ value: 'Count', position: 'insideBottom', offset: -8, ...AL }} />
+                  <YAxis dataKey="module" type="category" tick={{ fontSize: 11 }} width={120} />
+                  <Tooltip contentStyle={{ fontSize: 12 }} />
+                  <Bar dataKey="count" name="Questions" fill="#4472C4" radius={[0, 3, 3, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            );
+          }}
         </ChartCard>
       </div>
     </div>
