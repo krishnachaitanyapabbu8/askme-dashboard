@@ -1,7 +1,6 @@
 import * as XLSX from 'xlsx';
 
 const MASTER_PATH = './AskQ_Master_Dashboard.xlsx';
-const FT_PATH     = './PowerBI_Flat_Table.xlsx';
 
 async function fetchWorkbook(path) {
   const response = await fetch(path);
@@ -148,19 +147,13 @@ const labelStep = (step) => LLM_STEP_LABELS[step] || step;
 // ─── Main Loader ───────────────────────────────────────────────────────────────
 
 export async function loadDashboardData(filters = {}) {
-  // Load two files in parallel: master dashboard (AskQ_Cleaned + meta tables)
-  // and standalone PowerBI_Flat_Table (correct issue data matching PBI).
-  const [masterWb, ftWb] = await Promise.all([
-    fetchWorkbook(MASTER_PATH),
-    fetchWorkbook(FT_PATH),
-  ]);
+  const wb = await fetchWorkbook(MASTER_PATH);
 
-  const cleaned      = getSheet(masterWb, 'AskQ_Cleaned');
-  const responseTime = getSheet(masterWb, 'AskQ_ResponseTime');
-  const tokenUsage   = getSheet(masterWb, 'AskQ_TokenUsage');
-  const llmSteps     = getSheet(masterWb, 'AskQ_LLMSteps');
-  // Use standalone ft (1850 rows) — has correct issue values matching PBI.
-  const flatTable    = getSheet(ftWb, 'PowerBI_Flat_Table_Sheet');
+  const cleaned      = getSheet(wb, 'AskQ_Cleaned');
+  const responseTime = getSheet(wb, 'AskQ_ResponseTime');
+  const tokenUsage   = getSheet(wb, 'AskQ_TokenUsage');
+  const llmSteps     = getSheet(wb, 'AskQ_LLMSteps');
+  const flatTable    = getSheet(wb, 'PowerBI_Flat_Table');
 
   const filterOptions = getFilterOptions(cleaned, flatTable);
 
