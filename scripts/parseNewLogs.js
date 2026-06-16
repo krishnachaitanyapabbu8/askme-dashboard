@@ -15,7 +15,7 @@
  */
 
 import { createRequire } from 'module';
-import { readdirSync, existsSync } from 'fs';
+import { readdirSync, existsSync, renameSync } from 'fs';
 import { join, extname, resolve, dirname } from 'path';
 import { fileURLToPath } from 'url';
 
@@ -24,8 +24,9 @@ const XLSX    = require('xlsx');
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const ROOT       = resolve(__dirname, '..');
-const EXCEL_PATH = join(ROOT, 'public', 'AskQ_Master_Dashboard.xlsx');
-const LOGS_FOLDER = join(ROOT, 'logs');
+const EXCEL_PATH      = join(ROOT, 'public', 'AskQ_Master_Dashboard.xlsx');
+const LOGS_FOLDER     = join(ROOT, 'logs');
+const COMPLETED_FOLDER = join(ROOT, 'logs', 'completed');
 
 // ── Date helpers ───────────────────────────────────────────────────────────────
 
@@ -262,6 +263,11 @@ for (const file of logFiles) {
   for (const [sheet, n] of Object.entries(added)) {
     console.log(`    → ${sheet}: ${n > 0 ? `+${n} new rows` : 'nothing new'}`);
   }
+
+  // Move to completed/ regardless of whether rows were new or already present
+  const dest = join(COMPLETED_FOLDER, file);
+  renameSync(join(LOGS_FOLDER, file), dest);
+  console.log(`    ✓ moved to logs/completed/`);
 }
 
 if (totalAdded > 0) {

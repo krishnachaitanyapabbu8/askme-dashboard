@@ -3,3 +3,8 @@ dist/
 .vite/
 .env
 logs/*.csv
+logs/*.xlsx
+logs/*.xls
+logs/completed/*.csv
+logs/completed/*.xlsx
+logs/completed/*.xls
