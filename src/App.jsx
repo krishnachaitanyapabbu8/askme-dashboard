@@ -91,6 +91,11 @@ export default function App() {
       {/* Header */}
       <header className="app-header">
         <h1>AskMe Analytics Dashboard</h1>
+        {data?.filterOptions?.months?.length > 0 && (
+          <span className="header-last-updated">
+            Data through {data.filterOptions.months[data.filterOptions.months.length - 1]}
+          </span>
+        )}
       </header>
 
       {/* Tab Bar */}
