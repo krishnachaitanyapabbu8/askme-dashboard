@@ -18,7 +18,6 @@ export default function ExecutiveOverview({ data }) {
       <div className="kpi-row">
         <KPICard label="Total User Questions" value={m.totalUserQuestions} />
         <KPICard label="Active Users"          value={m.activeUsers} />
-        <KPICard label="Satisfaction Score"    value={m.satisfactionScore} format="percent" accent="#70AD47" />
         <KPICard label="Likes"                 value={m.totalLikes}    accent="#70AD47" />
         <KPICard label="Dislikes"              value={m.totalDislikes} accent="#FF0000" />
         <KPICard label="Chatbot Issues"        value={m.totalIssues}   accent="#ED7D31" />
