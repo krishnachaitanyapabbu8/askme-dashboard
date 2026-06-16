@@ -35,7 +35,7 @@ export default function KPICard({ label, value, format = 'number', accent, sub }
   const displayValue = fmt(value, format);
 
   return (
-    <div className="kpi-card">
+    <div className="kpi-card" style={accent ? { borderTopColor: accent } : {}}>
       <div className="kpi-label">{label}</div>
       <div className="kpi-value" style={accent ? { color: accent } : {}}>
         {displayValue}
