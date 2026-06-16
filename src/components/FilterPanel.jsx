@@ -1,6 +1,6 @@
 import React from 'react';
 
-function MultiSelect({ label, options, selected, onChange }) {
+function MultiSelect({ label, options, selected, onChange, partialItems = new Set() }) {
   const allSelected = selected.length === 0;
 
   const toggle = (val) => {
@@ -25,15 +25,16 @@ function MultiSelect({ label, options, selected, onChange }) {
       </div>
       <div className="filter-options">
         {options.map((opt) => {
-          const isActive = selected.includes(opt);
+          const isActive   = selected.includes(opt);
+          const isPartial  = partialItems.has(opt);
           return (
             <button
               key={opt}
               className={`filter-chip ${isActive ? 'active' : ''}`}
               onClick={() => toggle(opt)}
-              title={opt}
+              title={isPartial ? `${opt} — data may be incomplete` : opt}
             >
-              {opt}
+              {opt}{isPartial ? ' *' : ''}
             </button>
           );
         })}
@@ -46,6 +47,10 @@ export default function FilterPanel({ filterOptions, filters, onFilterChange }) 
   if (!filterOptions) return <div className="filter-panel loading">Loading filters…</div>;
 
   const set = (key) => (val) => onFilterChange({ ...filters, [key]: val });
+
+  // Mark the most recent month as potentially partial
+  const months = filterOptions.months ?? [];
+  const partialMonths = new Set(months.length ? [months[months.length - 1]] : []);
 
   return (
     <aside className="filter-panel">
@@ -63,9 +68,10 @@ export default function FilterPanel({ filterOptions, filters, onFilterChange }) 
 
       <MultiSelect
         label="Month"
-        options={filterOptions.months}
+        options={months}
         selected={filters.months}
         onChange={set('months')}
+        partialItems={partialMonths}
       />
       <MultiSelect
         label="Bot Type"

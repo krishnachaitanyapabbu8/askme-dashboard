@@ -301,7 +301,7 @@ export async function loadDashboardData(filters = {}) {
   const issuesByBot = (() => {
     const byBot = groupBy(ft, 'Bot_Type');
     return Object.entries(byBot)
-      .filter(([b]) => b)
+      .filter(([b]) => b && b !== 'Human' && b !== 'Unknown')
       .map(([bot, rows]) => ({ bot, issues: sumField(rows, 'Is_Issue') }))
       .sort((a, b) => b.issues - a.issues);
   })();
@@ -429,13 +429,23 @@ export async function loadDashboardData(filters = {}) {
   }));
 
   const tokensByModule = (() => {
-    const byMod = groupBy(ftu, 'Module_Clean');
-    return Object.entries(byMod)
-      .filter(([m]) => m && m !== 'Unknown')
-      .map(([module, rows]) => ({
-        module,
-        totalTokens: rows.reduce((s, r) => s + toInt(r.Total_Tokens), 0),
-      }))
+    // Normalize combined module names like "Inventory + Sales" → "Inventory"
+    // and fix all-caps like "SALES" → "Sales"
+    const normalizeModule = (m) => {
+      const primary = m.split('+')[0].trim();
+      return primary === primary.toUpperCase()
+        ? primary.charAt(0) + primary.slice(1).toLowerCase()
+        : primary;
+    };
+    const agg = {};
+    ftu.forEach(r => {
+      const raw = r.Module_Clean;
+      if (!raw || raw === 'Unknown') return;
+      const mod = normalizeModule(raw);
+      agg[mod] = (agg[mod] || 0) + toInt(r.Total_Tokens);
+    });
+    return Object.entries(agg)
+      .map(([module, totalTokens]) => ({ module, totalTokens }))
       .sort((a, b) => b.totalTokens - a.totalTokens)
       .slice(0, 12);
   })();

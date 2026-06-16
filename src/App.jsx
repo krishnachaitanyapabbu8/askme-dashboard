@@ -91,7 +91,6 @@ export default function App() {
       {/* Header */}
       <header className="app-header">
         <h1>AskMe Analytics Dashboard</h1>
-        <span className="header-sub">AI Assistant Performance &amp; Usage Intelligence</span>
       </header>
 
       {/* Tab Bar */}
