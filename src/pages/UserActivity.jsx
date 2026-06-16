@@ -25,8 +25,8 @@ export default function UserActivity({ data }) {
 
       {/* Row 1: Questions by User (top 10) | Active Users by Month */}
       <div className="chart-row">
-        <ChartCard title="Questions by User" minHeight={320}>
-          <ResponsiveContainer width="100%" height={280}>
+        <ChartCard title="Questions by User" scrollable minHeight={320}>
+          <ResponsiveContainer width="100%" height={Math.max(280, c.questionsByUser.length * 36)}>
             <BarChart
               layout="vertical"
               data={c.questionsByUser}

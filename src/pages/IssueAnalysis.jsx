@@ -89,8 +89,8 @@ export default function IssueAnalysis({ data }) {
 
       {/* Row 2: Issues by Module | Issues by Bot Type */}
       <div className="chart-row">
-        <ChartCard title="Issues by ERP Module" minHeight={300}>
-          <ResponsiveContainer width="100%" height={260}>
+        <ChartCard title="Issues by ERP Module" scrollable minHeight={300}>
+          <ResponsiveContainer width="100%" height={Math.max(260, c.issuesByModule.length * 36)}>
             <BarChart
               layout="vertical"
               data={c.issuesByModule}
@@ -149,8 +149,8 @@ export default function IssueAnalysis({ data }) {
           </ResponsiveContainer>
         </ChartCard>
 
-        <ChartCard title="KB Gaps by ERP Module" minHeight={300}>
-          <ResponsiveContainer width="100%" height={260}>
+        <ChartCard title="KB Gaps by ERP Module" scrollable minHeight={300}>
+          <ResponsiveContainer width="100%" height={Math.max(260, c.kbGapsByModule.length * 36)}>
             <BarChart
               layout="vertical"
               data={c.kbGapsByModule}

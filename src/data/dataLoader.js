@@ -262,14 +262,13 @@ export async function loadDashboardData(filters = {}) {
       .sort((a, b) => b.responses - a.responses);
   })();
 
-  // Horizontal bar: Questions by Module (from ft, top 12)
+  // Horizontal bar: Questions by Module (from ft, all modules)
   const questionsByModule = (() => {
     const byMod = groupBy(ft, 'Module');
     return Object.entries(byMod)
       .filter(([m]) => m)
       .map(([module, rows]) => ({ module, count: rows.length }))
-      .sort((a, b) => b.count - a.count)
-      .slice(0, 12);
+      .sort((a, b) => b.count - a.count);
   })();
 
   // ── Issue Analysis ─────────────────────────────────────────────────────────
@@ -289,14 +288,13 @@ export async function loadDashboardData(filters = {}) {
     { name: 'Copilot Loops', value: copilotLoops },
   ].filter(d => d.value > 0);
 
-  // Horizontal bar: Issues by Module
+  // Horizontal bar: Issues by Module (all modules)
   const issuesByModule = (() => {
     const byMod = groupBy(ft, 'Module');
     return Object.entries(byMod)
       .filter(([m]) => m)
       .map(([module, rows]) => ({ module, issues: sumField(rows, 'Is_Issue') }))
-      .sort((a, b) => b.issues - a.issues)
-      .slice(0, 12);
+      .sort((a, b) => b.issues - a.issues);
   })();
 
   // Horizontal bar: Issues by Bot Type
@@ -322,14 +320,13 @@ export async function loadDashboardData(filters = {}) {
     };
   });
 
-  // Bar: Top 10 Users by Question Count
+  // Bar: All users by Question Count (scrollable chart, no slice)
   const questionsByUser = (() => {
     const byUser = groupBy(userQuestions, 'User_Display');
     return Object.entries(byUser)
       .filter(([u]) => u)
       .map(([user, rows]) => ({ user, count: rows.length }))
-      .sort((a, b) => b.count - a.count)
-      .slice(0, 10);
+      .sort((a, b) => b.count - a.count);
   })();
 
   // Session → Module map (from ft)
@@ -438,8 +435,7 @@ export async function loadDashboardData(filters = {}) {
         module,
         totalTokens: rows.reduce((s, r) => s + toInt(r.Total_Tokens), 0),
       }))
-      .sort((a, b) => b.totalTokens - a.totalTokens)
-      .slice(0, 12);
+      .sort((a, b) => b.totalTokens - a.totalTokens);
   })();
 
   const tokensByStep = (() => {
@@ -482,8 +478,7 @@ export async function loadDashboardData(filters = {}) {
       .filter(([m]) => m)
       .map(([module, rows]) => ({ module, kbGaps: sumField(rows, 'Is_KB_Gap') }))
       .filter(d => d.kbGaps > 0)
-      .sort((a, b) => b.kbGaps - a.kbGaps)
-      .slice(0, 12);
+      .sort((a, b) => b.kbGaps - a.kbGaps);
   })();
 
   // ─── Return ────────────────────────────────────────────────────────────────

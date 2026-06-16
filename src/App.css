@@ -413,6 +413,31 @@ body {
   max-width: 400px;
 }
 
+/* ── Scrollable chart body ────────────────────────────────────────────── */
+
+.chart-body--scroll {
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+.chart-body--scroll::-webkit-scrollbar {
+  width: 4px;
+}
+
+.chart-body--scroll::-webkit-scrollbar-track {
+  background: #F1F5F9;
+  border-radius: 4px;
+}
+
+.chart-body--scroll::-webkit-scrollbar-thumb {
+  background: #CBD5E1;
+  border-radius: 4px;
+}
+
+.chart-body--scroll::-webkit-scrollbar-thumb:hover {
+  background: #94A3B8;
+}
+
 /* ── Recharts overrides ───────────────────────────────────────────────── */
 
 .recharts-cartesian-axis-tick-value {

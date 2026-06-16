@@ -113,8 +113,8 @@ export default function TokenUsage({ data }) {
 
       {/* Charts Row 3 */}
       <div className="chart-row">
-        <ChartCard title="Total Tokens by ERP Module" minHeight={320}>
-          <ResponsiveContainer width="100%" height={280}>
+        <ChartCard title="Total Tokens by ERP Module" scrollable minHeight={320}>
+          <ResponsiveContainer width="100%" height={Math.max(280, c.tokensByModule.length * 36)}>
             <BarChart
               layout="vertical"
               data={c.tokensByModule}
@@ -132,8 +132,8 @@ export default function TokenUsage({ data }) {
           </ResponsiveContainer>
         </ChartCard>
 
-        <ChartCard title="Avg Tokens by LLM Step" minHeight={320}>
-          <ResponsiveContainer width="100%" height={280}>
+        <ChartCard title="Avg Tokens by LLM Step" scrollable minHeight={320}>
+          <ResponsiveContainer width="100%" height={Math.max(280, c.tokensByStep.length * 36)}>
             <BarChart
               layout="vertical"
               data={c.tokensByStep}

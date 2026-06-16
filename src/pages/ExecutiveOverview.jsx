@@ -71,8 +71,8 @@ export default function ExecutiveOverview({ data }) {
           </ResponsiveContainer>
         </ChartCard>
 
-        <ChartCard title="Questions by ERP Module" minHeight={300}>
-          <ResponsiveContainer width="100%" height={260}>
+        <ChartCard title="Questions by ERP Module" scrollable minHeight={300}>
+          <ResponsiveContainer width="100%" height={Math.max(260, c.questionsByModule.length * 36)}>
             <BarChart
               layout="vertical"
               data={c.questionsByModule}
