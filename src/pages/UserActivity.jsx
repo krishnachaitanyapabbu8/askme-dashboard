@@ -7,6 +7,7 @@ import KPICard from '../components/KPICard';
 import ChartCard from '../components/ChartCard';
 
 const COLORS = ['#4472C4', '#ED7D31', '#A5A5A5', '#FFC000', '#70AD47', '#FF0000'];
+const AL = { style: { textAnchor: 'middle', fontSize: 11, fill: '#94A3B8' } };
 
 export default function UserActivity({ data }) {
   if (!data) return <div className="page-loading">Loading…</div>;
@@ -16,24 +17,24 @@ export default function UserActivity({ data }) {
     <div className="page">
       {/* KPI Row */}
       <div className="kpi-row">
-        <KPICard label="Active Users"          value={m.activeUsers} />
-        <KPICard label="Avg Questions / User"  value={m.avgQuestionsPerUser} />
-        <KPICard label="Total Sessions"        value={m.totalSessions} />
-        <KPICard label="Avg Sessions / User"   value={m.avgSessionsPerUser} />
-        <KPICard label="Repeat Question Rate"  value={m.repeatQuestionRate} format="percent" accent="#FFC000" />
+        <KPICard label="Active Users"         value={m.activeUsers} />
+        <KPICard label="Avg Questions / User" value={m.avgQuestionsPerUser} />
+        <KPICard label="Total Sessions"       value={m.totalSessions} />
+        <KPICard label="Avg Sessions / User"  value={m.avgSessionsPerUser} />
+        <KPICard label="Repeat Question Rate" value={m.repeatQuestionRate} format="percent" accent="#FFC000" />
       </div>
 
-      {/* Row 1: Questions by User (top 10) | Active Users by Month */}
+      {/* Row 1: Questions by User | Active Users by Month */}
       <div className="chart-row">
         <ChartCard title="Questions by User" scrollable minHeight={320}>
           <ResponsiveContainer width="100%" height={Math.max(280, c.questionsByUser.length * 36)}>
             <BarChart
-              layout="vertical"
-              data={c.questionsByUser}
-              margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
+              layout="vertical" data={c.questionsByUser}
+              margin={{ top: 5, right: 30, left: 20, bottom: 25 }}
             >
               <CartesianGrid strokeDasharray="3 3" stroke="#E0E0E0" horizontal={false} />
-              <XAxis type="number" tick={{ fontSize: 11 }} />
+              <XAxis type="number" tick={{ fontSize: 11 }}
+                label={{ value: 'Questions', position: 'insideBottom', offset: -8, ...AL }} />
               <YAxis dataKey="user" type="category" tick={{ fontSize: 10 }} width={140} />
               <Tooltip contentStyle={{ fontSize: 12 }} />
               <Bar dataKey="count" name="Questions" fill="#4472C4" radius={[0, 3, 3, 0]} />
@@ -43,19 +44,15 @@ export default function UserActivity({ data }) {
 
         <ChartCard title="Active Users by Month" minHeight={320}>
           <ResponsiveContainer width="100%" height={280}>
-            <LineChart data={c.activeUsersByMonth} margin={{ top: 5, right: 20, left: 0, bottom: 5 }}>
+            <LineChart data={c.activeUsersByMonth} margin={{ top: 5, right: 20, left: 15, bottom: 5 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="#E0E0E0" />
               <XAxis dataKey="month" tick={{ fontSize: 11 }} />
-              <YAxis tick={{ fontSize: 11 }} />
+              <YAxis tick={{ fontSize: 11 }}
+                label={{ value: 'Users', angle: -90, position: 'insideLeft', offset: 10, ...AL }} />
               <Tooltip contentStyle={{ fontSize: 12 }} />
               <Line
-                type="monotone"
-                dataKey="activeUsers"
-                name="Active Users"
-                stroke="#4472C4"
-                strokeWidth={2}
-                dot={{ r: 3 }}
-                activeDot={{ r: 5 }}
+                type="monotone" dataKey="activeUsers" name="Active Users"
+                stroke="#4472C4" strokeWidth={2} dot={{ r: 3 }} activeDot={{ r: 5 }}
               />
             </LineChart>
           </ResponsiveContainer>
@@ -67,24 +64,19 @@ export default function UserActivity({ data }) {
         <ChartCard title="Questions by User per Module" minHeight={320}>
           <ResponsiveContainer width="100%" height={280}>
             <BarChart
-              layout="vertical"
-              data={c.questionsByUserModule}
-              margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
+              layout="vertical" data={c.questionsByUserModule}
+              margin={{ top: 5, right: 30, left: 20, bottom: 25 }}
             >
               <CartesianGrid strokeDasharray="3 3" stroke="#E0E0E0" horizontal={false} />
-              <XAxis type="number" tick={{ fontSize: 11 }} />
+              <XAxis type="number" tick={{ fontSize: 11 }}
+                label={{ value: 'Questions', position: 'insideBottom', offset: -8, ...AL }} />
               <YAxis dataKey="user" type="category" tick={{ fontSize: 10 }} width={140} />
               <Tooltip contentStyle={{ fontSize: 12 }} />
               <Legend wrapperStyle={{ fontSize: 11 }} />
               {c.chartModules.map((mod, i) => (
-                <Bar
-                  key={mod}
-                  dataKey={mod}
-                  name={mod}
-                  stackId="mod"
+                <Bar key={mod} dataKey={mod} name={mod} stackId="mod"
                   fill={COLORS[i % COLORS.length]}
-                  radius={i === c.chartModules.length - 1 ? [0, 3, 3, 0] : [0, 0, 0, 0]}
-                />
+                  radius={i === c.chartModules.length - 1 ? [0, 3, 3, 0] : [0, 0, 0, 0]} />
               ))}
             </BarChart>
           </ResponsiveContainer>
@@ -93,24 +85,19 @@ export default function UserActivity({ data }) {
         <ChartCard title="Questions by Category per User" minHeight={320}>
           <ResponsiveContainer width="100%" height={280}>
             <BarChart
-              layout="vertical"
-              data={c.questionsByUserCategory}
-              margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
+              layout="vertical" data={c.questionsByUserCategory}
+              margin={{ top: 5, right: 30, left: 20, bottom: 25 }}
             >
               <CartesianGrid strokeDasharray="3 3" stroke="#E0E0E0" horizontal={false} />
-              <XAxis type="number" tick={{ fontSize: 11 }} />
+              <XAxis type="number" tick={{ fontSize: 11 }}
+                label={{ value: 'Questions', position: 'insideBottom', offset: -8, ...AL }} />
               <YAxis dataKey="user" type="category" tick={{ fontSize: 10 }} width={140} />
               <Tooltip contentStyle={{ fontSize: 12 }} />
               <Legend wrapperStyle={{ fontSize: 11 }} />
               {c.chartCategories.map((cat, i) => (
-                <Bar
-                  key={cat}
-                  dataKey={cat}
-                  name={cat}
-                  stackId="cat"
+                <Bar key={cat} dataKey={cat} name={cat} stackId="cat"
                   fill={COLORS[i % COLORS.length]}
-                  radius={i === c.chartCategories.length - 1 ? [0, 3, 3, 0] : [0, 0, 0, 0]}
-                />
+                  radius={i === c.chartCategories.length - 1 ? [0, 3, 3, 0] : [0, 0, 0, 0]} />
               ))}
             </BarChart>
           </ResponsiveContainer>

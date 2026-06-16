@@ -7,6 +7,7 @@ import KPICard from '../components/KPICard';
 import ChartCard from '../components/ChartCard';
 
 const COLORS = ['#4472C4', '#ED7D31', '#A5A5A5', '#FFC000', '#70AD47'];
+const AL = { style: { textAnchor: 'middle', fontSize: 11, fill: '#94A3B8' } };
 
 export default function BotPerformance({ data }) {
   if (!data) return <div className="page-loading">Loading…</div>;
@@ -24,26 +25,20 @@ export default function BotPerformance({ data }) {
         <KPICard label="Avg Response Time (sec)"     value={m.avgResponseTime}        format="time" />
       </div>
 
-      {/* Row 1: Bot Responses by Month (lines per bot type) | Avg Response Time by Bot Type */}
+      {/* Row 1: Bot Responses by Month | Avg Response Time by Bot Type */}
       <div className="chart-row">
         <ChartCard title="Bot Responses by Month" minHeight={300}>
           <ResponsiveContainer width="100%" height={260}>
-            <LineChart data={c.botResponsesByMonth} margin={{ top: 5, right: 20, left: 0, bottom: 5 }}>
+            <LineChart data={c.botResponsesByMonth} margin={{ top: 5, right: 20, left: 15, bottom: 5 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="#E0E0E0" />
               <XAxis dataKey="month" tick={{ fontSize: 11 }} />
-              <YAxis tick={{ fontSize: 11 }} />
+              <YAxis tick={{ fontSize: 11 }}
+                label={{ value: 'Responses', angle: -90, position: 'insideLeft', offset: 10, ...AL }} />
               <Tooltip contentStyle={{ fontSize: 12 }} />
               <Legend wrapperStyle={{ fontSize: 12 }} />
               {c.botTypeNames.map((bt, i) => (
-                <Line
-                  key={bt}
-                  type="monotone"
-                  dataKey={bt}
-                  name={bt}
-                  stroke={COLORS[i % COLORS.length]}
-                  strokeWidth={2}
-                  dot={{ r: 3 }}
-                />
+                <Line key={bt} type="monotone" dataKey={bt} name={bt}
+                  stroke={COLORS[i % COLORS.length]} strokeWidth={2} dot={{ r: 3 }} />
               ))}
             </LineChart>
           </ResponsiveContainer>
@@ -52,17 +47,14 @@ export default function BotPerformance({ data }) {
         <ChartCard title="Avg Response Time by Bot Type" minHeight={300}>
           <ResponsiveContainer width="100%" height={260}>
             <BarChart
-              layout="vertical"
-              data={c.responseTimeByBot}
-              margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
+              layout="vertical" data={c.responseTimeByBot}
+              margin={{ top: 5, right: 30, left: 20, bottom: 25 }}
             >
               <CartesianGrid strokeDasharray="3 3" stroke="#E0E0E0" horizontal={false} />
-              <XAxis type="number" tick={{ fontSize: 11 }} unit="s" />
+              <XAxis type="number" tick={{ fontSize: 11 }} unit="s"
+                label={{ value: 'Seconds (s)', position: 'insideBottom', offset: -8, ...AL }} />
               <YAxis dataKey="bot" type="category" tick={{ fontSize: 11 }} width={130} />
-              <Tooltip
-                contentStyle={{ fontSize: 12 }}
-                formatter={(v) => [`${v}s`, 'Avg Time']}
-              />
+              <Tooltip contentStyle={{ fontSize: 12 }} formatter={(v) => [`${v}s`, 'Avg Time']} />
               <Bar dataKey="avgTime" name="Avg Response Time (s)" fill="#4472C4" radius={[0, 3, 3, 0]} />
             </BarChart>
           </ResponsiveContainer>
@@ -74,12 +66,12 @@ export default function BotPerformance({ data }) {
         <ChartCard title="Issues by Bot Type" minHeight={300}>
           <ResponsiveContainer width="100%" height={260}>
             <BarChart
-              layout="vertical"
-              data={c.issuesByBotPerf}
-              margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
+              layout="vertical" data={c.issuesByBotPerf}
+              margin={{ top: 5, right: 30, left: 20, bottom: 25 }}
             >
               <CartesianGrid strokeDasharray="3 3" stroke="#E0E0E0" horizontal={false} />
-              <XAxis type="number" tick={{ fontSize: 11 }} />
+              <XAxis type="number" tick={{ fontSize: 11 }}
+                label={{ value: 'Issues', position: 'insideBottom', offset: -8, ...AL }} />
               <YAxis dataKey="bot" type="category" tick={{ fontSize: 11 }} width={130} />
               <Tooltip contentStyle={{ fontSize: 12 }} />
               <Bar dataKey="issues" name="Issues" fill="#ED7D31" radius={[0, 3, 3, 0]} />
@@ -90,12 +82,12 @@ export default function BotPerformance({ data }) {
         <ChartCard title="Likes & Dislikes by Bot Type" minHeight={300}>
           <ResponsiveContainer width="100%" height={260}>
             <BarChart
-              layout="vertical"
-              data={c.likesByBot}
-              margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
+              layout="vertical" data={c.likesByBot}
+              margin={{ top: 5, right: 30, left: 20, bottom: 25 }}
             >
               <CartesianGrid strokeDasharray="3 3" stroke="#E0E0E0" horizontal={false} />
-              <XAxis type="number" tick={{ fontSize: 11 }} />
+              <XAxis type="number" tick={{ fontSize: 11 }}
+                label={{ value: 'Count', position: 'insideBottom', offset: -8, ...AL }} />
               <YAxis dataKey="bot" type="category" tick={{ fontSize: 11 }} width={130} />
               <Tooltip contentStyle={{ fontSize: 12 }} />
               <Legend wrapperStyle={{ fontSize: 12 }} />
