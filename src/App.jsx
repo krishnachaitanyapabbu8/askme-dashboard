@@ -7,13 +7,15 @@ import IssueAnalysis from './pages/IssueAnalysis';
 import UserActivity from './pages/UserActivity';
 import BotPerformance from './pages/BotPerformance';
 import TokenUsage from './pages/TokenUsage';
+import Comparison from './pages/Comparison';
 
 const TABS = [
-  { id: 'overview', label: '📊 Executive Overview' },
-  { id: 'issues', label: '⚠️ Issue Analysis' },
-  { id: 'users', label: '👥 User Activity' },
-  { id: 'bots', label: '🤖 Bot Performance' },
-  { id: 'tokens', label: '🔢 Token Usage' },
+  { id: 'overview',    label: '📊 Executive Overview' },
+  { id: 'issues',      label: '⚠️ Issue Analysis' },
+  { id: 'users',       label: '👥 User Activity' },
+  { id: 'bots',        label: '🤖 Bot Performance' },
+  { id: 'tokens',      label: '🔢 Token Usage' },
+  { id: 'comparison',  label: '📅 MoM Comparison' },
 ];
 
 const DEFAULT_FILTERS = {
@@ -81,8 +83,9 @@ export default function App() {
       case 'issues':   return <IssueAnalysis data={data} />;
       case 'users':    return <UserActivity data={data} />;
       case 'bots':     return <BotPerformance data={data} />;
-      case 'tokens':   return <TokenUsage data={data} />;
-      default:         return null;
+      case 'tokens':     return <TokenUsage data={data} />;
+      case 'comparison': return <Comparison data={data} />;
+      default:           return null;
     }
   };
 

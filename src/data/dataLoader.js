@@ -501,7 +501,7 @@ export async function loadDashboardData(filters = {}) {
   const previousMonth = allMonths[allMonths.length - 2] ?? null;
 
   const mom = (() => {
-    if (!currentMonth || !previousMonth) return {};
+    if (!currentMonth || !previousMonth) return { currentMonth, previousMonth };
 
     const ftC = ft.filter(r => r.Month === currentMonth);
     const ftP = ft.filter(r => r.Month === previousMonth);
@@ -522,51 +522,104 @@ export async function loadDashboardData(filters = {}) {
     const brC = botC.length;
     const brP = botP.length;
 
+    const currRT = +avgField(frC, 'Response_Time_Seconds').toFixed(1);
+    const prevRT = +avgField(frP, 'Response_Time_Seconds').toFixed(1);
+    const currIR = brC > 0 ? +((issC / brC) * 100).toFixed(1) : 0;
+    const prevIR = brP > 0 ? +((issP / brP) * 100).toFixed(1) : 0;
+    const currTok = ftuC.reduce((s, r) => s + toInt(r.Total_Tokens), 0);
+    const prevTok = ftuP.reduce((s, r) => s + toInt(r.Total_Tokens), 0);
+    const currATQ = +avgField(ftuC, 'Total_Tokens').toFixed(0);
+    const prevATQ = +avgField(ftuP, 'Total_Tokens').toFixed(0);
+    const currAU  = distinctCount(uqC.map(r => r.User_Display).filter(Boolean));
+    const prevAU  = distinctCount(uqP.map(r => r.User_Display).filter(Boolean));
+
+    // Raw values for comparison table
+    const current = {
+      totalUserQuestions:    uqC.length,
+      activeUsers:           currAU,
+      totalLikes:            fcC.filter(r => r.Feedback === 'LIKE').length,
+      totalDislikes:         fcC.filter(r => r.Feedback === 'DISLIKE').length,
+      totalIssues:           issC,
+      sessionDrops:          ftC.filter(r => toInt(r.Is_Context_Drop) === 1).length,
+      kbGaps:                sumField(ftC, 'Is_KB_Gap'),
+      systemErrors:          sumField(ftC, 'Is_System_Error'),
+      overallIssueRateByBot: currIR,
+      avgResponseTime:       currRT,
+      totalTokens:           currTok,
+      avgTokensPerQuestion:  currATQ,
+      nlsqlResponses:        fcC.filter(r => r.Bot_Type === 'NLSQLAgent').length,
+    };
+    const previous = {
+      totalUserQuestions:    uqP.length,
+      activeUsers:           prevAU,
+      totalLikes:            fcP.filter(r => r.Feedback === 'LIKE').length,
+      totalDislikes:         fcP.filter(r => r.Feedback === 'DISLIKE').length,
+      totalIssues:           issP,
+      sessionDrops:          ftP.filter(r => toInt(r.Is_Context_Drop) === 1).length,
+      kbGaps:                sumField(ftP, 'Is_KB_Gap'),
+      systemErrors:          sumField(ftP, 'Is_System_Error'),
+      overallIssueRateByBot: prevIR,
+      avgResponseTime:       prevRT,
+      totalTokens:           prevTok,
+      avgTokensPerQuestion:  prevATQ,
+      nlsqlResponses:        fcP.filter(r => r.Bot_Type === 'NLSQLAgent').length,
+    };
+
+    // Comparison chart data
+    const allUsers = [...new Set([...uqC, ...uqP].map(r => r.User_Display).filter(Boolean))];
+    const userComparison = allUsers
+      .map(u => ({
+        user:     u,
+        current:  uqC.filter(r => r.User_Display === u).length,
+        previous: uqP.filter(r => r.User_Display === u).length,
+      }))
+      .sort((a, b) => (b.current + b.previous) - (a.current + a.previous))
+      .slice(0, 10);
+
+    const allMods = [...new Set([...ftC, ...ftP].map(r => r.Module).filter(Boolean))];
+    const moduleComparison = allMods
+      .map(m => ({
+        module:   m,
+        current:  ftC.filter(r => r.Module === m).length,
+        previous: ftP.filter(r => r.Module === m).length,
+      }))
+      .sort((a, b) => (b.current + b.previous) - (a.current + a.previous))
+      .slice(0, 10);
+
+    const issueComparison = allMods
+      .map(m => ({
+        module:   m,
+        current:  sumField(ftC.filter(r => r.Module === m), 'Is_Issue'),
+        previous: sumField(ftP.filter(r => r.Module === m), 'Is_Issue'),
+      }))
+      .filter(d => d.current > 0 || d.previous > 0)
+      .sort((a, b) => (b.current + b.previous) - (a.current + a.previous))
+      .slice(0, 10);
+
     return {
+      currentMonth,
+      previousMonth,
+      current,
+      previous,
+      charts: { userComparison, moduleComparison, issueComparison },
+      // % changes
       totalUserQuestions:    momPct(uqC.length, uqP.length),
-      activeUsers:           momPct(
-        distinctCount(uqC.map(r => r.User_Display).filter(Boolean)),
-        distinctCount(uqP.map(r => r.User_Display).filter(Boolean))
-      ),
-      totalLikes:            momPct(
-        fcC.filter(r => r.Feedback === 'LIKE').length,
-        fcP.filter(r => r.Feedback === 'LIKE').length
-      ),
-      totalDislikes:         momPct(
-        fcC.filter(r => r.Feedback === 'DISLIKE').length,
-        fcP.filter(r => r.Feedback === 'DISLIKE').length
-      ),
+      activeUsers:           momPct(currAU, prevAU),
+      totalLikes:            momPct(current.totalLikes, previous.totalLikes),
+      totalDislikes:         momPct(current.totalDislikes, previous.totalDislikes),
       totalIssues:           momPct(issC, issP),
-      sessionDrops:          momPct(
-        ftC.filter(r => toInt(r.Is_Context_Drop) === 1).length,
-        ftP.filter(r => toInt(r.Is_Context_Drop) === 1).length
-      ),
-      kbGaps:                momPct(sumField(ftC, 'Is_KB_Gap'),       sumField(ftP, 'Is_KB_Gap')),
-      systemErrors:          momPct(sumField(ftC, 'Is_System_Error'), sumField(ftP, 'Is_System_Error')),
-      overallIssueRateByBot: momPct(
-        brC > 0 ? +((issC / brC) * 100).toFixed(1) : 0,
-        brP > 0 ? +((issP / brP) * 100).toFixed(1) : 0
-      ),
-      avgResponseTime:       momPct(
-        +avgField(frC, 'Response_Time_Seconds').toFixed(1),
-        +avgField(frP, 'Response_Time_Seconds').toFixed(1)
-      ),
-      totalTokens:           momPct(
-        ftuC.reduce((s, r) => s + toInt(r.Total_Tokens), 0),
-        ftuP.reduce((s, r) => s + toInt(r.Total_Tokens), 0)
-      ),
+      sessionDrops:          momPct(current.sessionDrops, previous.sessionDrops),
+      kbGaps:                momPct(current.kbGaps, previous.kbGaps),
+      systemErrors:          momPct(current.systemErrors, previous.systemErrors),
+      overallIssueRateByBot: momPct(currIR, prevIR),
+      avgResponseTime:       momPct(currRT, prevRT),
+      totalTokens:           momPct(currTok, prevTok),
       totalSessions:         momPct(
         distinctCount(fcC.map(r => r.Session_ID).filter(Boolean)),
         distinctCount(fcP.map(r => r.Session_ID).filter(Boolean))
       ),
-      nlsqlResponses:        momPct(
-        fcC.filter(r => r.Bot_Type === 'NLSQLAgent').length,
-        fcP.filter(r => r.Bot_Type === 'NLSQLAgent').length
-      ),
-      avgTokensPerQuestion:  momPct(
-        +avgField(ftuC, 'Total_Tokens').toFixed(0),
-        +avgField(ftuP, 'Total_Tokens').toFixed(0)
-      ),
+      nlsqlResponses:        momPct(current.nlsqlResponses, previous.nlsqlResponses),
+      avgTokensPerQuestion:  momPct(currATQ, prevATQ),
     };
   })();
 
