@@ -1,10 +1,11 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   LineChart, Line, BarChart, Bar,
   XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
 } from 'recharts';
 import KPICard from '../components/KPICard';
 import ChartCard from '../components/ChartCard';
+import DrilldownModal from '../components/DrilldownModal';
 
 const COLORS = ['#4472C4', '#ED7D31', '#A5A5A5', '#FFC000', '#70AD47', '#FF0000'];
 const AL = { style: { textAnchor: 'middle', fontSize: 11, fill: '#94A3B8' } };
@@ -13,9 +14,15 @@ const BAR_H = 36;
 export default function UserActivity({ data }) {
   if (!data) return <div className="page-loading">Loading…</div>;
   const { measures: m, charts: c, mom } = data;
+  const [drilldownUser, setDrilldownUser] = useState(null);
 
   return (
     <div className="page">
+      <DrilldownModal
+        user={drilldownUser}
+        rows={c.drilldownRows}
+        onClose={() => setDrilldownUser(null)}
+      />
       {/* KPI Row */}
       <div className="kpi-row">
         <KPICard label="Active Users"         value={m.activeUsers}         trend={mom.activeUsers} />
@@ -27,7 +34,7 @@ export default function UserActivity({ data }) {
 
       {/* Row 1: Questions by User | Active Users by Month */}
       <div className="chart-row">
-        <ChartCard title="Questions by User" scrollable minHeight={320} topNOptions={[10, 20, 'all']}>
+        <ChartCard title="Questions by User — click a bar to drill down" scrollable minHeight={320} topNOptions={[10, 20, 'all']}>
           {(n) => {
             const d = c.questionsByUser.slice(0, n);
             return (
@@ -39,7 +46,9 @@ export default function UserActivity({ data }) {
                     label={{ value: 'Questions', position: 'insideBottom', offset: -8, ...AL }} />
                   <YAxis dataKey="user" type="category" tick={{ fontSize: 10 }} width={140} />
                   <Tooltip contentStyle={{ fontSize: 12 }} />
-                  <Bar dataKey="count" name="Questions" fill="#4472C4" radius={[0, 3, 3, 0]} />
+                  <Bar dataKey="count" name="Questions" fill="#4472C4" radius={[0, 3, 3, 0]}
+                    style={{ cursor: 'pointer' }}
+                    onClick={(payload) => setDrilldownUser(payload.user)} />
                 </BarChart>
               </ResponsiveContainer>
             );

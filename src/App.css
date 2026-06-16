@@ -490,6 +490,127 @@ body {
   background: #94A3B8;
 }
 
+/* ── Drilldown Modal ─────────────────────────────────────────────────── */
+
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.45);
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  backdrop-filter: blur(2px);
+}
+
+.modal-card {
+  background: #fff;
+  border-radius: 14px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.2);
+  width: 100%;
+  max-width: 880px;
+  max-height: 80vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.modal-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  padding: 20px 24px 16px;
+  border-bottom: 1px solid #E2E8F0;
+  flex-shrink: 0;
+}
+
+.modal-title {
+  font-size: 16px;
+  font-weight: 700;
+  color: #1E293B;
+}
+
+.modal-subtitle {
+  font-size: 12px;
+  color: #94A3B8;
+  margin-top: 3px;
+}
+
+.modal-close {
+  background: #F1F5F9;
+  border: none;
+  border-radius: 6px;
+  width: 28px;
+  height: 28px;
+  cursor: pointer;
+  font-size: 13px;
+  color: #64748B;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.12s;
+  flex-shrink: 0;
+  line-height: 1;
+}
+
+.modal-close:hover {
+  background: #E2E8F0;
+  color: #1E293B;
+}
+
+.modal-body {
+  overflow-y: auto;
+  flex: 1;
+}
+
+.modal-empty {
+  padding: 40px;
+  text-align: center;
+  color: #94A3B8;
+  font-size: 13px;
+}
+
+.drilldown-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+}
+
+.drilldown-table thead th {
+  position: sticky;
+  top: 0;
+  background: #F8FAFC;
+  padding: 10px 16px;
+  text-align: left;
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  color: #94A3B8;
+  border-bottom: 1px solid #E2E8F0;
+  z-index: 1;
+}
+
+.drilldown-table tbody tr {
+  border-bottom: 1px solid #F1F5F9;
+  transition: background 0.1s;
+}
+
+.drilldown-table tbody tr:hover { background: #F8FAFC; }
+
+.drilldown-table tbody td {
+  padding: 10px 16px;
+  color: #475569;
+  vertical-align: top;
+  line-height: 1.5;
+}
+
+.col-date     { white-space: nowrap; width: 100px; color: #94A3B8 !important; font-size: 11px; }
+.col-module   { white-space: nowrap; width: 150px; }
+.col-category { white-space: nowrap; width: 120px; }
+.col-message  { color: #1E293B !important; }
+
 /* ── Recharts overrides ───────────────────────────────────────────────── */
 
 .recharts-cartesian-axis-tick-value {

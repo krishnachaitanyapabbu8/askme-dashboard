@@ -639,6 +639,16 @@ export async function loadDashboardData(filters = {}) {
       // Issue Analysis extras
       issueRateByMonth,
       kbGapsByModule,
+      // User drilldown — all filtered question rows (modal reads these)
+      drilldownRows: userQuestions.map(r => ({
+        user:     r.User_Display ?? '',
+        date:     r.Date,
+        month:    r.Month,
+        session:  r.Session_ID ?? '',
+        module:   sessionToModule[r.Session_ID] ?? '',
+        category: r.Question_Category ?? '',
+        message:  r.Message ?? '',
+      })),
     },
   };
 }
