@@ -17,9 +17,9 @@ export default function UserActivity({ data }) {
       {/* KPI Row — matches PBI: Active Users, Avg Questions Per User, Total Sessions, Avg Sessions Per User */}
       <div className="kpi-row">
         <KPICard label="Active Users"          value={m.activeUsers} />
-        <KPICard label="Avg Questions / User"  value={m.avgQuestionsPerUser} format="decimal" />
+        <KPICard label="Avg Questions / User"  value={m.avgQuestionsPerUser} />
         <KPICard label="Total Sessions"        value={m.totalSessions} />
-        <KPICard label="Avg Sessions / User"   value={m.avgSessionsPerUser} format="decimal" />
+        <KPICard label="Avg Sessions / User"   value={m.avgSessionsPerUser} />
       </div>
 
       {/* Row 1: Questions by User (top 10) | Active Users by Month */}
