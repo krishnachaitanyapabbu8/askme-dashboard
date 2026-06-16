@@ -14,13 +14,14 @@ export default function BotPerformance({ data }) {
 
   return (
     <div className="page">
-      {/* KPI Row — matches PBI: NLSQLAgent, Training Bot, Copilot Sales, Issue Rate by Bot, Avg Response Time */}
+      {/* KPI Row */}
       <div className="kpi-row">
-        <KPICard label="NLSQLAgent Responses"       value={m.nlsqlResponses} />
-        <KPICard label="Training Bot Responses"     value={m.trainingBotResponses} />
+        <KPICard label="NLSQLAgent Responses"        value={m.nlsqlResponses} />
+        <KPICard label="Training Bot Responses"      value={m.trainingBotResponses} />
         <KPICard label="Copilot Sales Bot Responses" value={m.copilotSalesResponses} />
-        <KPICard label="Issue Rate by Bot"          value={m.overallIssueRateByBot} format="percent" accent="#ED7D31" />
-        <KPICard label="Avg Response Time (sec)"    value={m.avgResponseTime} format="time" />
+        <KPICard label="Issue Rate by Bot"           value={m.overallIssueRateByBot} format="percent" accent="#ED7D31" />
+        <KPICard label="SQL Retry Rate"              value={m.sqlRetryRate}           format="percent" accent="#FFC000" />
+        <KPICard label="Avg Response Time (sec)"     value={m.avgResponseTime}        format="time" />
       </div>
 
       {/* Row 1: Bot Responses by Month (lines per bot type) | Avg Response Time by Bot Type */}

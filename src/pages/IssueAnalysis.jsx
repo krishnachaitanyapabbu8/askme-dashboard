@@ -2,6 +2,7 @@ import React from 'react';
 import {
   LineChart, Line, BarChart, Bar, PieChart, Pie, Cell,
   XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
+  ReferenceLine,
 } from 'recharts';
 import KPICard, { fmt } from '../components/KPICard';
 import ChartCard from '../components/ChartCard';
@@ -116,6 +117,50 @@ export default function IssueAnalysis({ data }) {
               <YAxis dataKey="bot" type="category" tick={{ fontSize: 11 }} width={130} />
               <Tooltip contentStyle={{ fontSize: 12 }} />
               <Bar dataKey="issues" name="Issues" fill="#4472C4" radius={[0, 3, 3, 0]} />
+            </BarChart>
+          </ResponsiveContainer>
+        </ChartCard>
+      </div>
+
+      {/* Row 3: Issue Rate Trend | KB Gaps by Module */}
+      <div className="chart-row">
+        <ChartCard title="Issue Rate Trend (% of Bot Responses)" minHeight={300}>
+          <ResponsiveContainer width="100%" height={260}>
+            <LineChart data={c.issueRateByMonth} margin={{ top: 5, right: 20, left: 0, bottom: 5 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#E0E0E0" />
+              <XAxis dataKey="month" tick={{ fontSize: 11 }} />
+              <YAxis tick={{ fontSize: 11 }} unit="%" />
+              <Tooltip
+                contentStyle={{ fontSize: 12 }}
+                formatter={(v) => [`${v}%`, 'Issue Rate']}
+              />
+              <ReferenceLine y={m.overallIssueRateByBot} stroke="#A5A5A5" strokeDasharray="4 4"
+                label={{ value: `Avg ${m.overallIssueRateByBot}%`, fill: '#A5A5A5', fontSize: 11 }} />
+              <Line
+                type="monotone"
+                dataKey="issueRate"
+                name="Issue Rate %"
+                stroke="#ED7D31"
+                strokeWidth={2}
+                dot={{ r: 3 }}
+                activeDot={{ r: 5 }}
+              />
+            </LineChart>
+          </ResponsiveContainer>
+        </ChartCard>
+
+        <ChartCard title="KB Gaps by ERP Module" minHeight={300}>
+          <ResponsiveContainer width="100%" height={260}>
+            <BarChart
+              layout="vertical"
+              data={c.kbGapsByModule}
+              margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
+            >
+              <CartesianGrid strokeDasharray="3 3" stroke="#E0E0E0" horizontal={false} />
+              <XAxis type="number" tick={{ fontSize: 11 }} />
+              <YAxis dataKey="module" type="category" tick={{ fontSize: 11 }} width={120} />
+              <Tooltip contentStyle={{ fontSize: 12 }} />
+              <Bar dataKey="kbGaps" name="KB Gaps" fill="#4472C4" radius={[0, 3, 3, 0]} />
             </BarChart>
           </ResponsiveContainer>
         </ChartCard>

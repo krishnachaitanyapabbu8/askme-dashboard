@@ -62,7 +62,56 @@ export default function TokenUsage({ data }) {
         </ChartCard>
       </div>
 
-      {/* Charts Row 2 */}
+      {/* Charts Row 2: Prompt vs Completion split */}
+      <div className="chart-row single">
+        <ChartCard title="Prompt vs Completion Tokens by Month" minHeight={300}>
+          <ResponsiveContainer width="100%" height={260}>
+            <AreaChart
+              data={c.tokenSplitByMonth}
+              margin={{ top: 5, right: 20, left: 20, bottom: 5 }}
+            >
+              <defs>
+                <linearGradient id="gradPrompt" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="5%" stopColor="#4472C4" stopOpacity={0.4} />
+                  <stop offset="95%" stopColor="#4472C4" stopOpacity={0} />
+                </linearGradient>
+                <linearGradient id="gradCompletion" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="5%" stopColor="#ED7D31" stopOpacity={0.4} />
+                  <stop offset="95%" stopColor="#ED7D31" stopOpacity={0} />
+                </linearGradient>
+              </defs>
+              <CartesianGrid strokeDasharray="3 3" stroke="#E0E0E0" />
+              <XAxis dataKey="month" tick={{ fontSize: 11 }} />
+              <YAxis tickFormatter={formatTokenAxis} tick={{ fontSize: 11 }} />
+              <Tooltip
+                contentStyle={{ fontSize: 12 }}
+                formatter={(v, name) => [fmt(v, 'tokens'), name]}
+              />
+              <Legend wrapperStyle={{ fontSize: 12 }} />
+              <Area
+                type="monotone"
+                dataKey="promptTokens"
+                name="Prompt Tokens"
+                stroke="#4472C4"
+                strokeWidth={2}
+                fill="url(#gradPrompt)"
+                dot={{ r: 3 }}
+              />
+              <Area
+                type="monotone"
+                dataKey="completionTokens"
+                name="Completion Tokens"
+                stroke="#ED7D31"
+                strokeWidth={2}
+                fill="url(#gradCompletion)"
+                dot={{ r: 3 }}
+              />
+            </AreaChart>
+          </ResponsiveContainer>
+        </ChartCard>
+      </div>
+
+      {/* Charts Row 3 */}
       <div className="chart-row">
         <ChartCard title="Total Tokens by ERP Module" minHeight={320}>
           <ResponsiveContainer width="100%" height={280}>

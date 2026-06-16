@@ -192,6 +192,8 @@ export async function loadDashboardData(filters = {}) {
 
   const totalLikes    = fc.filter(r => r.Feedback === 'LIKE').length;
   const totalDislikes = fc.filter(r => r.Feedback === 'DISLIKE').length;
+  const satisfactionScore = (totalLikes + totalDislikes) > 0
+    ? +((totalLikes / (totalLikes + totalDislikes)) * 100).toFixed(1) : 0;
 
   // ── Issues ─────────────────────────────────────────────────────────────────
 
@@ -223,6 +225,8 @@ export async function loadDashboardData(filters = {}) {
   const sessionsTracked       = distinctCount(ftu.map(r => r.Session_ID).filter(Boolean));
   const sqlSteps              = fls.filter(r => r.LLM_Step === 'first_sql_generation_llm');
   const avgSqlTokens          = avgField(sqlSteps, 'Total_Tokens');
+  const retrySqlSteps         = fls.filter(r => r.LLM_Step === 'retry_sql_generation_1').length;
+  const sqlRetryRate          = sqlSteps.length > 0 ? +((retrySqlSteps / sqlSteps.length) * 100).toFixed(1) : 0;
   const avgResponseTime       = avgField(fr, 'Response_Time_Seconds');
 
   // ────────────────────────────────────────────────────────────────────────────
@@ -403,7 +407,7 @@ export async function loadDashboardData(filters = {}) {
   const issuesByBotPerf = (() => {
     const byBot = groupBy(ft, 'Bot_Type');
     return Object.entries(byBot)
-      .filter(([b]) => b && b !== 'Human')
+      .filter(([b]) => b && b !== 'Human' && b !== 'Unknown')
       .map(([bot, rows]) => ({ bot, issues: sumField(rows, 'Is_Issue') }))
       .sort((a, b) => b.issues - a.issues);
   })();
@@ -452,6 +456,38 @@ export async function loadDashboardData(filters = {}) {
       .sort((a, b) => b.avgTokens - a.avgTokens);
   })();
 
+  // Stacked area: Prompt vs Completion tokens by month
+  const tokenSplitByMonth = tuAllMonths.map(month => {
+    const mRows = ftu.filter(r => r.Month === month);
+    return {
+      month,
+      promptTokens:     mRows.reduce((s, r) => s + toInt(r.Prompt_Tokens), 0),
+      completionTokens: mRows.reduce((s, r) => s + toInt(r.Completion_Tokens), 0),
+    };
+  });
+
+  // Issue rate trend: (issues / bot responses) per month
+  const issueRateByMonth = allMonths.map(month => {
+    const mBotResponses = botRows.filter(r => r.Month === month).length;
+    return {
+      month,
+      issueRate: mBotResponses > 0
+        ? +((sumField(ft.filter(r => r.Month === month), 'Is_Issue') / mBotResponses) * 100).toFixed(1)
+        : 0,
+    };
+  });
+
+  // KB Gaps by Module — which modules have the most training gaps
+  const kbGapsByModule = (() => {
+    const byMod = groupBy(ft, 'Module');
+    return Object.entries(byMod)
+      .filter(([m]) => m)
+      .map(([module, rows]) => ({ module, kbGaps: sumField(rows, 'Is_KB_Gap') }))
+      .filter(d => d.kbGaps > 0)
+      .sort((a, b) => b.kbGaps - a.kbGaps)
+      .slice(0, 12);
+  })();
+
   // ─── Return ────────────────────────────────────────────────────────────────
 
   return {
@@ -467,6 +503,7 @@ export async function loadDashboardData(filters = {}) {
       repeatQuestionRate:  +repeatQuestionRate.toFixed(1),
       totalLikes,
       totalDislikes,
+      satisfactionScore,
       totalIssues,
       sessionDrops,
       kbGaps,
@@ -485,6 +522,7 @@ export async function loadDashboardData(filters = {}) {
       queriesTracked,
       sessionsTracked,
       avgSqlTokens:    +avgSqlTokens.toFixed(0),
+      sqlRetryRate,
       avgResponseTime: +avgResponseTime.toFixed(1),
     },
     charts: {
@@ -513,8 +551,12 @@ export async function loadDashboardData(filters = {}) {
       responseTimeByBot,
       // Token Usage
       tokensByMonth,
+      tokenSplitByMonth,
       tokensByModule,
       tokensByStep,
+      // Issue Analysis extras
+      issueRateByMonth,
+      kbGapsByModule,
     },
   };
 }
