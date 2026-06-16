@@ -270,38 +270,25 @@ function dedupKey(row, keys) {
 }
 
 /**
- * Deduplicates existing rows, then appends new non-duplicate rows.
- * Returns { added, dupesFixed }.
+ * Appends new rows that are not already present in the sheet.
+ * Existing rows are never modified or removed.
+ * Returns the count of rows actually added.
  */
 function appendToSheet(wb, sheetName, newRows) {
   const sheet    = wb.Sheets[sheetName];
   const existing = sheet ? XLSX.utils.sheet_to_json(sheet, { defval: '' }) : [];
   const keys     = DEDUP_KEYS[sheetName] ?? ['Session_ID'];
 
-  // 1. Deduplicate existing rows (keep first occurrence)
-  const seen = new Set();
-  const existingDeduped = existing.filter(r => {
-    const k = dedupKey(r, keys);
-    if (seen.has(k)) return false;
-    seen.add(k);
-    return true;
-  });
-  const dupesFixed = existing.length - existingDeduped.length;
-
-  // 2. Append only new rows not already present
+  const seen = new Set(existing.map(r => dedupKey(r, keys)));
   const toAdd = newRows.filter(r => !seen.has(dedupKey(r, keys)));
-  toAdd.forEach(r => seen.add(dedupKey(r, keys)));
 
-  const finalRows = [...existingDeduped, ...toAdd];
-  const changed   = finalRows.length !== existing.length;
+  if (!toAdd.length) return 0;
 
-  if (changed) {
-    const ws = XLSX.utils.json_to_sheet(finalRows);
-    wb.Sheets[sheetName] = ws;
-    if (!wb.SheetNames.includes(sheetName)) wb.SheetNames.push(sheetName);
-  }
+  const ws = XLSX.utils.json_to_sheet([...existing, ...toAdd]);
+  wb.Sheets[sheetName] = ws;
+  if (!wb.SheetNames.includes(sheetName)) wb.SheetNames.push(sheetName);
 
-  return { added: toAdd.length, dupesFixed };
+  return toAdd.length;
 }
 
 // ── Main ───────────────────────────────────────────────────────────────────────
@@ -315,36 +302,9 @@ const logFiles  = readdirSync(LOGS_FOLDER)
 
 const wb = XLSX.readFile(EXCEL_PATH);
 let totalAdded = 0;
-let totalDupesFixed = 0;
-
-// ── Run dedup pass on all sheets even if no new log files ──────────────────
-
-const SHEETS_TO_DEDUP = Object.keys(DEDUP_KEYS);
-let dedupOnly = false;
 
 if (!logFiles.length) {
-  console.log('No new log files in logs/. Running dedup-only pass on existing data…\n');
-  dedupOnly = true;
-}
-
-if (dedupOnly) {
-  let anyFixed = false;
-  for (const sheetName of SHEETS_TO_DEDUP) {
-    const { dupesFixed } = appendToSheet(wb, sheetName, []);
-    if (dupesFixed > 0) {
-      console.log(`  ✓ ${sheetName}: removed ${dupesFixed} duplicate rows`);
-      totalDupesFixed += dupesFixed;
-      anyFixed = true;
-    }
-  }
-  if (!anyFixed) {
-    console.log('  All sheets are clean — no duplicates found.');
-  }
-  if (totalDupesFixed > 0) {
-    XLSX.writeFile(wb, EXCEL_PATH);
-    console.log(`\nSaved — ${totalDupesFixed} duplicates removed.`);
-    console.log('Run: git add public/AskQ_Master_Dashboard.xlsx && git commit -m "Dedup existing data" && git push');
-  }
+  console.log('No new log files found in logs/. Nothing to do.');
   process.exit(0);
 }
 
@@ -387,13 +347,9 @@ for (const file of logFiles) {
   };
 
   console.log(`\n  ${file} (${rawRows.length} raw rows):`);
-  for (const [sheet, { added, dupesFixed }] of Object.entries(results)) {
-    const parts = [];
-    if (added      > 0) parts.push(`+${added} new rows`);
-    if (dupesFixed > 0) parts.push(`${dupesFixed} dupes fixed`);
-    console.log(`    → ${sheet}: ${parts.length ? parts.join(', ') : 'nothing new'}`);
-    totalAdded      += added;
-    totalDupesFixed += dupesFixed;
+  for (const [sheet, added] of Object.entries(results)) {
+    console.log(`    → ${sheet}: ${added > 0 ? `+${added} new rows` : 'nothing new'}`);
+    totalAdded += added;
   }
 
   const dest = join(COMPLETED_FOLDER, file);
@@ -402,12 +358,9 @@ for (const file of logFiles) {
   console.log(`    ✓ moved to logs/completed/${file}`);
 }
 
-if (totalAdded > 0 || totalDupesFixed > 0) {
+if (totalAdded > 0) {
   XLSX.writeFile(wb, EXCEL_PATH);
-  const parts = [];
-  if (totalAdded      > 0) parts.push(`${totalAdded} new rows added`);
-  if (totalDupesFixed > 0) parts.push(`${totalDupesFixed} duplicates removed`);
-  console.log(`\nSaved — ${parts.join(', ')}.`);
+  console.log(`\nSaved — ${totalAdded} new rows added.`);
   console.log('Next steps:');
   console.log('  git add public/AskQ_Master_Dashboard.xlsx');
   console.log('  git commit -m "Add prod logs YYYY-MM-DD"');
