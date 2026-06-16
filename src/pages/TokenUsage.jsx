@@ -17,16 +17,16 @@ function formatTokenAxis(value) {
 
 export default function TokenUsage({ data }) {
   if (!data) return <div className="page-loading">Loading…</div>;
-  const { measures: m, charts: c } = data;
+  const { measures: m, charts: c, mom } = data;
 
   return (
     <div className="page">
       {/* KPI Row */}
       <div className="kpi-row">
-        <KPICard label="Total Tokens"          value={m.totalTokens}          format="tokens" />
+        <KPICard label="Total Tokens"          value={m.totalTokens}          format="tokens" trend={mom.totalTokens} />
         <KPICard label="Queries Tracked"       value={m.queriesTracked} />
-        <KPICard label="Sessions Tracked"      value={m.sessionsTracked} />
-        <KPICard label="Avg Tokens / Question" value={m.avgTokensPerQuestion} />
+        <KPICard label="Sessions Tracked"      value={m.sessionsTracked}      trend={mom.totalSessions} />
+        <KPICard label="Avg Tokens / Question" value={m.avgTokensPerQuestion} trend={mom.avgTokensPerQuestion} />
         <KPICard label="Avg SQL Tokens"        value={m.avgSqlTokens} />
       </div>
 

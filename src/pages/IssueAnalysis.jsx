@@ -26,18 +26,18 @@ const renderLabel = ({ cx, cy, midAngle, innerRadius, outerRadius, percent }) =>
 
 export default function IssueAnalysis({ data }) {
   if (!data) return <div className="page-loading">Loading…</div>;
-  const { measures: m, charts: c } = data;
+  const { measures: m, charts: c, mom } = data;
 
   return (
     <div className="page">
       {/* KPI Row */}
       <div className="kpi-row">
-        <KPICard label="KB Gaps"       value={m.kbGaps}       accent="#4472C4" />
-        <KPICard label="System Errors" value={m.systemErrors} accent="#FF0000" />
+        <KPICard label="KB Gaps"       value={m.kbGaps}       accent="#4472C4" trend={mom.kbGaps}       invertTrend />
+        <KPICard label="System Errors" value={m.systemErrors} accent="#FF0000" trend={mom.systemErrors} invertTrend />
         <KPICard label="Masked Data"   value={m.maskedData}   accent="#A5A5A5" />
         <KPICard label="Copilot Loops" value={m.copilotLoops} accent="#FFC000" />
-        <KPICard label="Total Issues"  value={m.totalIssues}  accent="#ED7D31" />
-        <KPICard label="Context Drops" value={m.sessionDrops} accent="#70AD47" />
+        <KPICard label="Total Issues"  value={m.totalIssues}  accent="#ED7D31" trend={mom.totalIssues}  invertTrend />
+        <KPICard label="Context Drops" value={m.sessionDrops} accent="#70AD47" trend={mom.sessionDrops} invertTrend />
       </div>
 
       {/* Row 1: Total Issue Trend | Issues by Type */}

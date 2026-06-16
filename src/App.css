@@ -286,6 +286,13 @@ body {
   margin-top: 5px;
 }
 
+.kpi-trend {
+  font-size: 10px;
+  font-weight: 600;
+  margin-top: 6px;
+  letter-spacing: 0.1px;
+}
+
 /* ── Chart Row ────────────────────────────────────────────────────────── */
 
 .chart-row {

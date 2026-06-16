@@ -29,18 +29,30 @@ export function fmt(value, type = 'number') {
   }
 }
 
+// ── Trend Badge ───────────────────────────────────────────────────────────────
+
+function TrendBadge({ trend, invert }) {
+  if (trend === null || trend === undefined) return null;
+  const up     = trend > 0;
+  const isGood = invert ? !up : up;
+  const color  = trend === 0 ? '#94A3B8' : (isGood ? '#70AD47' : '#EF4444');
+  const arrow  = trend > 0 ? '▲' : trend < 0 ? '▼' : '—';
+  return (
+    <div className="kpi-trend" style={{ color }}>
+      {arrow} {Math.abs(trend)}% vs last month
+    </div>
+  );
+}
+
 // ── KPI Card Component ────────────────────────────────────────────────────────
 
-export default function KPICard({ label, value, format = 'number', accent, sub }) {
-  const displayValue = fmt(value, format);
-
+export default function KPICard({ label, value, format = 'number', accent, sub, trend, invertTrend }) {
   return (
     <div className="kpi-card" style={accent ? { borderTopColor: accent } : {}}>
       <div className="kpi-label">{label}</div>
-      <div className="kpi-value" style={accent ? { color: accent } : {}}>
-        {displayValue}
-      </div>
+      <div className="kpi-value" style={accent ? { color: accent } : {}}>{fmt(value, format)}</div>
       {sub && <div className="kpi-sub">{sub}</div>}
+      <TrendBadge trend={trend} invert={invertTrend} />
     </div>
   );
 }

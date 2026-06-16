@@ -12,17 +12,17 @@ const BAR_H = 36;
 
 export default function UserActivity({ data }) {
   if (!data) return <div className="page-loading">Loading…</div>;
-  const { measures: m, charts: c } = data;
+  const { measures: m, charts: c, mom } = data;
 
   return (
     <div className="page">
       {/* KPI Row */}
       <div className="kpi-row">
-        <KPICard label="Active Users"         value={m.activeUsers} />
+        <KPICard label="Active Users"         value={m.activeUsers}         trend={mom.activeUsers} />
         <KPICard label="Avg Questions / User" value={m.avgQuestionsPerUser} />
-        <KPICard label="Total Sessions"       value={m.totalSessions} />
+        <KPICard label="Total Sessions"       value={m.totalSessions}       trend={mom.totalSessions} />
         <KPICard label="Avg Sessions / User"  value={m.avgSessionsPerUser} />
-        <KPICard label="Repeat Question Rate" value={m.repeatQuestionRate} format="percent" accent="#FFC000" />
+        <KPICard label="Repeat Question Rate" value={m.repeatQuestionRate}  format="percent" accent="#FFC000" invertTrend />
       </div>
 
       {/* Row 1: Questions by User | Active Users by Month */}

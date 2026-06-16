@@ -12,18 +12,18 @@ const BAR_H = 36;
 
 export default function ExecutiveOverview({ data }) {
   if (!data) return <div className="page-loading">Loading…</div>;
-  const { measures: m, charts: c } = data;
+  const { measures: m, charts: c, mom } = data;
 
   return (
     <div className="page">
       {/* KPI Row */}
       <div className="kpi-row">
-        <KPICard label="Total User Questions" value={m.totalUserQuestions} />
-        <KPICard label="Active Users"          value={m.activeUsers} />
-        <KPICard label="Likes"                 value={m.totalLikes}    accent="#70AD47" />
-        <KPICard label="Dislikes"              value={m.totalDislikes} accent="#FF0000" />
-        <KPICard label="Chatbot Issues"        value={m.totalIssues}   accent="#ED7D31" />
-        <KPICard label="Context Drops"         value={m.sessionDrops}  accent="#A5A5A5" />
+        <KPICard label="Total User Questions" value={m.totalUserQuestions} trend={mom.totalUserQuestions} />
+        <KPICard label="Active Users"          value={m.activeUsers}        trend={mom.activeUsers} />
+        <KPICard label="Likes"                 value={m.totalLikes}         trend={mom.totalLikes}    accent="#70AD47" />
+        <KPICard label="Dislikes"              value={m.totalDislikes}      trend={mom.totalDislikes} accent="#FF0000" invertTrend />
+        <KPICard label="Chatbot Issues"        value={m.totalIssues}        trend={mom.totalIssues}   accent="#ED7D31" invertTrend />
+        <KPICard label="Context Drops"         value={m.sessionDrops}       trend={mom.sessionDrops}  accent="#A5A5A5" invertTrend />
       </div>
 
       {/* Row 1: Questions by Month | Bot Responses by Bot Type */}

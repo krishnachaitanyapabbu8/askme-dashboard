@@ -11,18 +11,18 @@ const AL = { style: { textAnchor: 'middle', fontSize: 11, fill: '#94A3B8' } };
 
 export default function BotPerformance({ data }) {
   if (!data) return <div className="page-loading">Loading…</div>;
-  const { measures: m, charts: c } = data;
+  const { measures: m, charts: c, mom } = data;
 
   return (
     <div className="page">
       {/* KPI Row */}
       <div className="kpi-row">
-        <KPICard label="NLSQLAgent Responses"        value={m.nlsqlResponses} />
+        <KPICard label="NLSQLAgent Responses"        value={m.nlsqlResponses}        trend={mom.nlsqlResponses} />
         <KPICard label="Training Bot Responses"      value={m.trainingBotResponses} />
         <KPICard label="Copilot Sales Bot Responses" value={m.copilotSalesResponses} />
-        <KPICard label="Issue Rate by Bot"           value={m.overallIssueRateByBot} format="percent" accent="#ED7D31" />
+        <KPICard label="Issue Rate by Bot"           value={m.overallIssueRateByBot} format="percent" accent="#ED7D31" trend={mom.overallIssueRateByBot} invertTrend />
         <KPICard label="SQL Retry Rate"              value={m.sqlRetryRate}           format="percent" accent="#FFC000" />
-        <KPICard label="Avg Response Time (sec)"     value={m.avgResponseTime}        format="time" />
+        <KPICard label="Avg Response Time (sec)"     value={m.avgResponseTime}        format="time"    trend={mom.avgResponseTime} invertTrend />
       </div>
 
       {/* Row 1: Bot Responses by Month | Avg Response Time by Bot Type */}
