@@ -192,8 +192,6 @@ export async function loadDashboardData(filters = {}) {
 
   const totalLikes    = fc.filter(r => r.Feedback === 'LIKE').length;
   const totalDislikes = fc.filter(r => r.Feedback === 'DISLIKE').length;
-  const satisfactionScore = (totalLikes + totalDislikes) > 0
-    ? +((totalLikes / (totalLikes + totalDislikes)) * 100).toFixed(1) : 0;
 
   // ── Issues ─────────────────────────────────────────────────────────────────
 
@@ -503,7 +501,6 @@ export async function loadDashboardData(filters = {}) {
       repeatQuestionRate:  +repeatQuestionRate.toFixed(1),
       totalLikes,
       totalDislikes,
-      satisfactionScore,
       totalIssues,
       sessionDrops,
       kbGaps,
