@@ -5,25 +5,31 @@
  *   npm run parse-logs
  *
  * Drop log Excel files into logs/ and run. The parser reads the RawData sheet,
- * extracts token usage from response_generation, and appends new rows to:
- *   - AskQ_Cleaned       (one row per message)
- *   - AskQ_LLMSteps      (one row per LLM step in bot responses)
- *   - AskQ_TokenUsage    (one row per bot response with aggregated tokens)
- *   - PowerBI_Flat_Table (one row per bot response with issue flags)
+ * appends new rows to ALL five sheets, deduplicates existing data, and reports.
  *
- * After running: git add public/AskQ_Master_Dashboard.xlsx && git commit && git push
+ * Sheets updated:
+ *   - AskQ_Cleaned       (one row per message — user + bot)
+ *   - AskQ_LLMSteps      (one row per LLM step in each bot response)
+ *   - AskQ_TokenUsage    (one row per bot response with aggregated token counts)
+ *   - AskQ_ResponseTime  (one row per bot response with response time in seconds)
+ *   - PowerBI_Flat_Table (one row per bot response with issue/flag columns)
+ *
+ * After running:
+ *   git add public/AskQ_Master_Dashboard.xlsx
+ *   git commit -m "Add prod logs YYYY-MM-DD"
+ *   git push
  */
 
 import { createRequire } from 'module';
-import { readdirSync, existsSync, renameSync } from 'fs';
+import { readdirSync, existsSync, renameSync, unlinkSync } from 'fs';
 import { join, extname, resolve, dirname } from 'path';
 import { fileURLToPath } from 'url';
 
-const require = createRequire(import.meta.url);
-const XLSX    = require('xlsx');
+const require   = createRequire(import.meta.url);
+const XLSX      = require('xlsx');
 
-const __dirname = dirname(fileURLToPath(import.meta.url));
-const ROOT       = resolve(__dirname, '..');
+const __dirname       = dirname(fileURLToPath(import.meta.url));
+const ROOT            = resolve(__dirname, '..');
 const EXCEL_PATH      = join(ROOT, 'public', 'AskQ_Master_Dashboard.xlsx');
 const LOGS_FOLDER     = join(ROOT, 'logs');
 const COMPLETED_FOLDER = join(ROOT, 'logs', 'completed');
@@ -36,13 +42,11 @@ function monthFromDate(dateStr) {
   if (!dateStr) return '';
   const s = String(dateStr).trim();
 
-  if (/^[A-Za-z]{3}-\d{4}$/.test(s)) return s;          // already "Jun-2026"
+  if (/^[A-Za-z]{3}-\d{4}$/.test(s)) return s;
 
-  // DD-MM-YYYY  (e.g. 15-06-2026)
   const dmy = s.match(/^(\d{1,2})-(\d{1,2})-(\d{4})$/);
   if (dmy) return `${MONTH_NAMES[parseInt(dmy[2]) - 1]}-${dmy[3]}`;
 
-  // YYYY-MM-DD
   const ymd = s.match(/^(\d{4})-(\d{2})-(\d{2})/);
   if (ymd) return `${MONTH_NAMES[parseInt(ymd[2]) - 1]}-${ymd[1]}`;
 
@@ -52,25 +56,31 @@ function monthFromDate(dateStr) {
   return '';
 }
 
+function parseTimestamp(dateStr) {
+  if (!dateStr) return NaN;
+  const t = new Date(String(dateStr).trim()).getTime();
+  return isNaN(t) ? NaN : t;
+}
+
 // ── Python-dict parser ─────────────────────────────────────────────────────────
-// response_generation is stored as a Python repr string, not valid JSON.
 
 function parsePythonDict(s) {
   if (!s || s === 'undefined') return null;
   try {
-    const json = String(s)
-      .replace(/'/g, '"')
-      .replace(/\bFalse\b/g, 'false')
-      .replace(/\bTrue\b/g, 'true')
-      .replace(/\bNone\b/g, 'null')
-      .replace(/,(\s*[}\]])/g, '$1');     // trailing commas
-    return JSON.parse(json);
+    return JSON.parse(
+      String(s)
+        .replace(/'/g, '"')
+        .replace(/\bFalse\b/g, 'false')
+        .replace(/\bTrue\b/g, 'true')
+        .replace(/\bNone\b/g, 'null')
+        .replace(/,(\s*[}\]])/g, '$1')
+    );
   } catch {
     return null;
   }
 }
 
-// ── Bot type inference ─────────────────────────────────────────────────────────
+// ── Bot type + module inference ────────────────────────────────────────────────
 
 function inferBotType(rg) {
   if (!rg?.token_usage || typeof rg.token_usage !== 'object') return '';
@@ -79,16 +89,47 @@ function inferBotType(rg) {
   return '';
 }
 
+function inferModule(rg) {
+  return rg?.modulename ?? rg?.token_usage?.modulename ?? '';
+}
+
+// ── Simple question category classifier ───────────────────────────────────────
+// Applied to user messages. New data defaults to 'Unclassified' when unsure.
+
+const DATA_QUERY_RE   = /\b(show|list|how many|total|count|give me|display|what is|average|sum|report)\b/i;
+const PROCESS_RE      = /\b(how to|what is the process|steps to|procedure|explain|guide|process for)\b/i;
+const TRANSACTIONAL_RE = /\b(create|update|delete|post|submit|approve|reject|record|enter|add new)\b/i;
+
+function classifyQuestion(message) {
+  if (!message) return 'Unclassified';
+  if (TRANSACTIONAL_RE.test(message)) return 'Transactional';
+  if (PROCESS_RE.test(message))       return 'Process/How-To';
+  if (DATA_QUERY_RE.test(message))    return 'Data Query';
+  return 'Unclassified';
+}
+
 // ── Row transformer ────────────────────────────────────────────────────────────
 
 function transformRawData(rows, sourceFile) {
-  const cleaned    = [];
-  const llmSteps   = [];
-  const tokenUsage = [];
-  const flatTable  = [];
+  const cleaned      = [];
+  const llmSteps     = [];
+  const tokenUsage   = [];
+  const responseTimes = [];
+  const flatTable    = [];
+
+  // Group rows by session and sort by timestamp for response-time calculation
+  const bySession = {};
+  for (const row of rows) {
+    const sid = String(row.chat_message_session_id ?? '');
+    if (!bySession[sid]) bySession[sid] = [];
+    bySession[sid].push(row);
+  }
+  for (const msgs of Object.values(bySession)) {
+    msgs.sort((a, b) => parseTimestamp(a.chat_message_created_at) - parseTimestamp(b.chat_message_created_at));
+  }
 
   for (const row of rows) {
-    const sessionId  = row.chat_message_session_id ?? '';
+    const sessionId  = String(row.chat_message_session_id ?? '');
     const senderRaw  = String(row.chat_message_sender_type ?? '').toLowerCase();
     const senderType = senderRaw === 'bot' ? 'bot' : 'Human';
     const isBot      = senderType === 'bot';
@@ -96,13 +137,13 @@ function transformRawData(rows, sourceFile) {
     const month      = monthFromDate(dateStr);
     const message    = String(row.chat_message_text ?? '');
     const userName   = row.user_name ?? '';
-
-    const rg          = parsePythonDict(row.response_generation);
-    const module      = rg?.modulename ?? rg?.token_usage?.modulename ?? '';
-    const botType     = inferBotType(rg);
+    const rg         = parsePythonDict(row.response_generation);
+    const module     = inferModule(rg);
+    const botType    = isBot ? inferBotType(rg) : '';
     const queryFailed = rg?.query_exce_failed_status === true ? 1 : 0;
+    const category   = isBot ? '' : classifyQuestion(message);
 
-    // ── AskQ_Cleaned ────────────────────────────────────────────────────────
+    // ── AskQ_Cleaned ──────────────────────────────────────────────────────────
     cleaned.push({
       Date:                    dateStr,
       Month:                   month,
@@ -112,8 +153,10 @@ function transformRawData(rows, sourceFile) {
       Bot_Message_Flag:        isBot ? 1 : 0,
       User_Name:               isBot ? '' : userName,
       User_Display:            isBot ? '' : userName,
-      Bot_Type:                isBot ? botType : '',
+      Bot_Type:                botType,
       Message:                 message,
+      Question_Category:       category,
+      Feedback:                '',
       Is_User_Question_Flag:   isBot ? 0 : 1,
       Is_System_Error:         isBot ? queryFailed : 0,
       Is_Issue:                isBot ? queryFailed : 0,
@@ -125,7 +168,7 @@ function transformRawData(rows, sourceFile) {
 
     if (!isBot) continue;
 
-    // ── LLM steps + token aggregation (bot rows only) ─────────────────────
+    // ── LLM steps + token aggregation ────────────────────────────────────────
     const tu = rg?.token_usage;
     if (tu && typeof tu === 'object') {
       let totalPrompt = 0, totalCompletion = 0, totalAll = 0;
@@ -150,9 +193,9 @@ function transformRawData(rows, sourceFile) {
           Source_File:       sourceFile,
         });
 
-        totalPrompt      += prompt;
-        totalCompletion  += completion;
-        totalAll         += total;
+        totalPrompt     += prompt;
+        totalCompletion += completion;
+        totalAll        += total;
       }
 
       if (totalAll > 0) {
@@ -169,7 +212,31 @@ function transformRawData(rows, sourceFile) {
       }
     }
 
-    // ── PowerBI_Flat_Table ─────────────────────────────────────────────────
+    // ── AskQ_ResponseTime — calculate from paired user→bot timestamps ─────────
+    const sessionMsgs = bySession[sessionId] ?? [];
+    const thisIndex   = sessionMsgs.indexOf(row);
+    if (thisIndex > 0) {
+      const prevRow   = sessionMsgs[thisIndex - 1];
+      const prevIsUser = String(prevRow.chat_message_sender_type ?? '').toLowerCase() !== 'bot';
+      if (prevIsUser) {
+        const t0 = parseTimestamp(prevRow.chat_message_created_at);
+        const t1 = parseTimestamp(dateStr);
+        if (!isNaN(t0) && !isNaN(t1) && t1 > t0) {
+          const diffSec = +((t1 - t0) / 1000).toFixed(1);
+          if (diffSec < 300) {
+            responseTimes.push({
+              Session_ID:            sessionId,
+              Month:                 month,
+              Bot_Type:              botType,
+              Response_Time_Seconds: diffSec,
+              Source_File:           sourceFile,
+            });
+          }
+        }
+      }
+    }
+
+    // ── PowerBI_Flat_Table ─────────────────────────────────────────────────────
     flatTable.push({
       Session_ID:          sessionId,
       Month:               month,
@@ -185,7 +252,7 @@ function transformRawData(rows, sourceFile) {
     });
   }
 
-  return { cleaned, llmSteps, tokenUsage, flatTable };
+  return { cleaned, llmSteps, tokenUsage, responseTimes, flatTable };
 }
 
 // ── Deduplication ──────────────────────────────────────────────────────────────
@@ -194,6 +261,7 @@ const DEDUP_KEYS = {
   AskQ_Cleaned:       ['Session_ID', 'Sender_Type', 'Message'],
   AskQ_LLMSteps:      ['Session_ID', 'LLM_Step'],
   AskQ_TokenUsage:    ['Session_ID'],
+  AskQ_ResponseTime:  ['Session_ID'],
   PowerBI_Flat_Table: ['Session_ID', 'Bot_Type'],
 };
 
@@ -201,15 +269,39 @@ function dedupKey(row, keys) {
   return keys.map(k => String(row[k] ?? '')).join('||');
 }
 
+/**
+ * Deduplicates existing rows, then appends new non-duplicate rows.
+ * Returns { added, dupesFixed }.
+ */
 function appendToSheet(wb, sheetName, newRows) {
-  if (!newRows.length) return 0;
-  const existing    = XLSX.utils.sheet_to_json(wb.Sheets[sheetName] ?? {}, { defval: '' });
-  const keys        = DEDUP_KEYS[sheetName];
-  const existingSet = new Set(existing.map(r => dedupKey(r, keys)));
-  const toAdd       = newRows.filter(r => !existingSet.has(dedupKey(r, keys)));
-  if (!toAdd.length) return 0;
-  wb.Sheets[sheetName] = XLSX.utils.json_to_sheet([...existing, ...toAdd]);
-  return toAdd.length;
+  const sheet    = wb.Sheets[sheetName];
+  const existing = sheet ? XLSX.utils.sheet_to_json(sheet, { defval: '' }) : [];
+  const keys     = DEDUP_KEYS[sheetName] ?? ['Session_ID'];
+
+  // 1. Deduplicate existing rows (keep first occurrence)
+  const seen = new Set();
+  const existingDeduped = existing.filter(r => {
+    const k = dedupKey(r, keys);
+    if (seen.has(k)) return false;
+    seen.add(k);
+    return true;
+  });
+  const dupesFixed = existing.length - existingDeduped.length;
+
+  // 2. Append only new rows not already present
+  const toAdd = newRows.filter(r => !seen.has(dedupKey(r, keys)));
+  toAdd.forEach(r => seen.add(dedupKey(r, keys)));
+
+  const finalRows = [...existingDeduped, ...toAdd];
+  const changed   = finalRows.length !== existing.length;
+
+  if (changed) {
+    const ws = XLSX.utils.json_to_sheet(finalRows);
+    wb.Sheets[sheetName] = ws;
+    if (!wb.SheetNames.includes(sheetName)) wb.SheetNames.push(sheetName);
+  }
+
+  return { added: toAdd.length, dupesFixed };
 }
 
 // ── Main ───────────────────────────────────────────────────────────────────────
@@ -221,62 +313,105 @@ const SUPPORTED = new Set(['.csv', '.xlsx', '.xls']);
 const logFiles  = readdirSync(LOGS_FOLDER)
   .filter(f => SUPPORTED.has(extname(f).toLowerCase()) && !f.startsWith('.'));
 
+const wb = XLSX.readFile(EXCEL_PATH);
+let totalAdded = 0;
+let totalDupesFixed = 0;
+
+// ── Run dedup pass on all sheets even if no new log files ──────────────────
+
+const SHEETS_TO_DEDUP = Object.keys(DEDUP_KEYS);
+let dedupOnly = false;
+
 if (!logFiles.length) {
-  console.log('No log files in logs/. Drop Excel or CSV files there and re-run.');
+  console.log('No new log files in logs/. Running dedup-only pass on existing data…\n');
+  dedupOnly = true;
+}
+
+if (dedupOnly) {
+  let anyFixed = false;
+  for (const sheetName of SHEETS_TO_DEDUP) {
+    const { dupesFixed } = appendToSheet(wb, sheetName, []);
+    if (dupesFixed > 0) {
+      console.log(`  ✓ ${sheetName}: removed ${dupesFixed} duplicate rows`);
+      totalDupesFixed += dupesFixed;
+      anyFixed = true;
+    }
+  }
+  if (!anyFixed) {
+    console.log('  All sheets are clean — no duplicates found.');
+  }
+  if (totalDupesFixed > 0) {
+    XLSX.writeFile(wb, EXCEL_PATH);
+    console.log(`\nSaved — ${totalDupesFixed} duplicates removed.`);
+    console.log('Run: git add public/AskQ_Master_Dashboard.xlsx && git commit -m "Dedup existing data" && git push');
+  }
   process.exit(0);
 }
 
-const wb = XLSX.readFile(EXCEL_PATH);
-let totalAdded = 0;
+// ── Process log files ──────────────────────────────────────────────────────
 
 for (const file of logFiles) {
-  const logWb = XLSX.readFile(join(LOGS_FOLDER, file));
+  const logPath = join(LOGS_FOLDER, file);
+  let rawRows;
 
-  // Prefer RawData sheet; fall back to first sheet
-  const sheetName = logWb.SheetNames.includes('RawData') ? 'RawData' : logWb.SheetNames[0];
-  const rawRows   = XLSX.utils.sheet_to_json(logWb.Sheets[sheetName], { defval: '' });
+  const ext = extname(file).toLowerCase();
+  if (ext === '.csv') {
+    const logWb = XLSX.readFile(logPath);
+    rawRows = XLSX.utils.sheet_to_json(logWb.Sheets[logWb.SheetNames[0]], { defval: '' });
+  } else {
+    const logWb = XLSX.readFile(logPath);
+    const sheetName = logWb.SheetNames.includes('RawData') ? 'RawData' : logWb.SheetNames[0];
+    rawRows = XLSX.utils.sheet_to_json(logWb.Sheets[sheetName], { defval: '' });
+  }
 
   if (!rawRows.length) { console.log(`  ${file}: empty — skipping`); continue; }
 
-  const headers        = Object.keys(rawRows[0]);
-  const isKnownFormat  = ['chat_message_session_id', 'chat_message_sender_type'].every(c => headers.includes(c));
+  const headers       = Object.keys(rawRows[0]);
+  const isKnownFormat = ['chat_message_session_id', 'chat_message_sender_type'].every(c => headers.includes(c));
 
   if (!isKnownFormat) {
     console.log(`  ${file}: unrecognised format — skipping`);
-    console.log(`    Columns: ${headers.join(', ')}`);
+    console.log(`    Columns found: ${headers.join(', ')}`);
     continue;
   }
 
-  const { cleaned, llmSteps, tokenUsage, flatTable } = transformRawData(rawRows, file);
+  const { cleaned, llmSteps, tokenUsage, responseTimes, flatTable } =
+    transformRawData(rawRows, file);
 
-  const added = {
+  const results = {
     'AskQ_Cleaned':       appendToSheet(wb, 'AskQ_Cleaned',       cleaned),
     'AskQ_LLMSteps':      appendToSheet(wb, 'AskQ_LLMSteps',      llmSteps),
     'AskQ_TokenUsage':    appendToSheet(wb, 'AskQ_TokenUsage',     tokenUsage),
+    'AskQ_ResponseTime':  appendToSheet(wb, 'AskQ_ResponseTime',   responseTimes),
     'PowerBI_Flat_Table': appendToSheet(wb, 'PowerBI_Flat_Table',  flatTable),
   };
 
-  const fileTotal = Object.values(added).reduce((s, n) => s + n, 0);
-  totalAdded += fileTotal;
-
   console.log(`\n  ${file} (${rawRows.length} raw rows):`);
-  for (const [sheet, n] of Object.entries(added)) {
-    console.log(`    → ${sheet}: ${n > 0 ? `+${n} new rows` : 'nothing new'}`);
+  for (const [sheet, { added, dupesFixed }] of Object.entries(results)) {
+    const parts = [];
+    if (added      > 0) parts.push(`+${added} new rows`);
+    if (dupesFixed > 0) parts.push(`${dupesFixed} dupes fixed`);
+    console.log(`    → ${sheet}: ${parts.length ? parts.join(', ') : 'nothing new'}`);
+    totalAdded      += added;
+    totalDupesFixed += dupesFixed;
   }
 
-  // Move to completed/ regardless of whether rows were new or already present
   const dest = join(COMPLETED_FOLDER, file);
-  renameSync(join(LOGS_FOLDER, file), dest);
-  console.log(`    ✓ moved to logs/completed/`);
+  if (existsSync(dest)) unlinkSync(dest);
+  renameSync(logPath, dest);
+  console.log(`    ✓ moved to logs/completed/${file}`);
 }
 
-if (totalAdded > 0) {
+if (totalAdded > 0 || totalDupesFixed > 0) {
   XLSX.writeFile(wb, EXCEL_PATH);
-  console.log(`\nSaved — ${totalAdded} total new rows added to ${EXCEL_PATH}`);
+  const parts = [];
+  if (totalAdded      > 0) parts.push(`${totalAdded} new rows added`);
+  if (totalDupesFixed > 0) parts.push(`${totalDupesFixed} duplicates removed`);
+  console.log(`\nSaved — ${parts.join(', ')}.`);
   console.log('Next steps:');
   console.log('  git add public/AskQ_Master_Dashboard.xlsx');
-  console.log('  git commit -m "Add logs YYYY-MM-DD"');
+  console.log('  git commit -m "Add prod logs YYYY-MM-DD"');
   console.log('  git push');
 } else {
-  console.log('\nNo new rows — Excel unchanged.');
+  console.log('\nNo changes — Excel unchanged.');
 }

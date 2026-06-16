@@ -12,10 +12,18 @@ async function fetchWorkbook(path) {
 function getSheet(workbook, sheetName) {
   const sheet = workbook.Sheets[sheetName];
   if (!sheet) { console.warn(`Sheet "${sheetName}" not found.`); return []; }
-  return XLSX.utils.sheet_to_json(sheet, { defval: '' });
+  return XLSX.utils.sheet_to_json(sheet, { defval: '' })
+    .map(r => r.Month !== undefined ? { ...r, Month: normalizeMonth(r.Month) } : r);
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
+
+// Normalise "Jun 2026" → "Jun-2026" so space- and hyphen-separated months
+// compare equal regardless of which tool produced them.
+function normalizeMonth(m) {
+  if (!m) return '';
+  return String(m).trim().replace(/\s+/, '-');
+}
 
 const toInt   = (v) => { const n = parseInt(v, 10); return isNaN(n) ? 0 : n; };
 const toFloat = (v) => { const n = parseFloat(v);   return isNaN(n) ? 0 : n; };
