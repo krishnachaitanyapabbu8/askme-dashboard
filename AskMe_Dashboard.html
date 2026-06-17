@@ -847,7 +847,6 @@ function App() {
       <div className="error-screen">
         <h2>⚠️ Data not loaded</h2>
         <p>{error}</p>
-        <input type="file" accept=".xlsx" ref={fileRef} id="filePicker" onChange={onFileChange}/>
         <button className="file-pick-btn" onClick={()=>fileRef.current.click()}>📂 Open AskMe_Dashboard_Data.xlsx</button>
         <p style={{marginTop:8,fontSize:11,color:'#aaa'}}>Or place the file in the same folder as this HTML and refresh.</p>
       </div>
