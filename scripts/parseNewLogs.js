@@ -38,15 +38,57 @@ const COMPLETED_FOLDER = join(ROOT, 'logs', 'completed');
 
 const MONTH_NAMES = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 
+// Normalize any date string to DD-MM-YYYY for consistent storage across all sheets.
+// Accepts: "YYYY-MM-DD", "DD-MM-YYYY", "MM/DD/YYYY", JS Date, or Excel serial number.
+function toDisplayDate(raw) {
+  if (!raw && raw !== 0) return '';
+  const s = String(raw).trim();
+  if (!s) return '';
+
+  // Already DD-MM-YYYY
+  const dmy = s.match(/^(\d{1,2})-(\d{1,2})-(\d{4})$/);
+  if (dmy) return s;
+
+  // YYYY-MM-DD (ISO)
+  const ymd = s.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (ymd) return `${ymd[3]}-${ymd[2]}-${ymd[1]}`;
+
+  // MM/DD/YYYY
+  const mdy = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+  if (mdy) return `${mdy[2].padStart(2,'0')}-${mdy[1].padStart(2,'0')}-${mdy[3]}`;
+
+  // Excel serial number
+  if (/^\d+$/.test(s)) {
+    const d = new Date(Math.round((parseInt(s) - 25569) * 86400 * 1000));
+    if (!isNaN(d)) {
+      const dd = String(d.getUTCDate()).padStart(2,'0');
+      const mm = String(d.getUTCMonth()+1).padStart(2,'0');
+      return `${dd}-${mm}-${d.getUTCFullYear()}`;
+    }
+  }
+
+  // Fall back via Date parse
+  const d = new Date(s);
+  if (!isNaN(d)) {
+    const dd = String(d.getDate()).padStart(2,'0');
+    const mm = String(d.getMonth()+1).padStart(2,'0');
+    return `${dd}-${mm}-${d.getFullYear()}`;
+  }
+
+  return s;
+}
+
 function monthFromDate(dateStr) {
   if (!dateStr) return '';
   const s = String(dateStr).trim();
 
   if (/^[A-Za-z]{3}-\d{4}$/.test(s)) return s;
 
+  // DD-MM-YYYY
   const dmy = s.match(/^(\d{1,2})-(\d{1,2})-(\d{4})$/);
   if (dmy) return `${MONTH_NAMES[parseInt(dmy[2]) - 1]}-${dmy[3]}`;
 
+  // YYYY-MM-DD (ISO)
   const ymd = s.match(/^(\d{4})-(\d{2})-(\d{2})/);
   if (ymd) return `${MONTH_NAMES[parseInt(ymd[2]) - 1]}-${ymd[1]}`;
 
@@ -133,7 +175,8 @@ function transformRawData(rows, sourceFile) {
     const senderRaw  = String(row.chat_message_sender_type ?? '').toLowerCase();
     const senderType = senderRaw === 'bot' ? 'bot' : 'Human';
     const isBot      = senderType === 'bot';
-    const dateStr    = row.chat_message_created_at ?? row.Date ?? '';
+    const rawDate    = row.Date || row.chat_message_created_at || '';
+    const dateStr    = toDisplayDate(rawDate);
     const month      = monthFromDate(dateStr);
     const message    = String(row.chat_message_text ?? '');
     const userName   = row.user_name ?? '';
