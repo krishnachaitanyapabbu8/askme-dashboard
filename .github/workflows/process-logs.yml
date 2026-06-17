@@ -14,10 +14,14 @@ permissions:
 jobs:
   process-logs:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -38,3 +42,5 @@ jobs:
           file_pattern: 'public/AskQ_Master_Dashboard.xlsx logs/completed/'
           commit_user_name: 'AskMe Dashboard Bot'
           commit_user_email: 'dashboard-bot@noreply.com'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
