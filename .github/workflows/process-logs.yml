@@ -30,12 +30,11 @@ jobs:
       - name: Run log parser
         run: npm run parse-logs
 
-      - name: Commit updated dashboard data
-        uses: stefanzweifel/git-auto-commit-action@v5
-        with:
-          commit_message: 'Auto: update dashboard from Ramco logs [skip ci]'
-          file_pattern: 'public/AskQ_Master_Dashboard.xlsx logs/completed/'
-          commit_user_name: 'AskMe Dashboard Bot'
-          commit_user_email: 'dashboard-bot@noreply.com'
-        env:
-          GITHUB_TOKEN: ${{ secrets.GH_PAT }}
+      - name: Commit and push updated dashboard data
+        run: |
+          git config user.name "AskMe Dashboard Bot"
+          git config user.email "dashboard-bot@noreply.com"
+          git add public/AskQ_Master_Dashboard.xlsx logs/completed/
+          git diff --staged --quiet && echo "Nothing to commit" && exit 0
+          git commit -m "Auto: update dashboard from Ramco logs [skip ci]"
+          git push https://x-access-token:${{ secrets.GH_PAT }}@github.com/${{ github.repository }}.git HEAD:main
