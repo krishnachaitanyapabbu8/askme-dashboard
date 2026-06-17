@@ -37,7 +37,9 @@ jobs:
         run: |
           git config user.name "AskMe Dashboard Bot"
           git config user.email "dashboard-bot@noreply.com"
+          git stash
           git pull --rebase origin main
+          git stash pop
           git add public/AskQ_Master_Dashboard.xlsx logs/completed/
           git diff --staged --quiet && echo "Nothing to commit" && exit 0
           git commit -m "Auto: update dashboard from Ramco logs [skip ci]"
