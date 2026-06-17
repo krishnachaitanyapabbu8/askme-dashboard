@@ -79,6 +79,19 @@
     #filePicker { display: none; }
 
     .page-loading { padding: 40px; text-align: center; color: #888; }
+
+    /* Page Visibility Manager */
+    .page-mgr-wrap { position: relative; margin-left: auto; }
+    .page-mgr-btn { background: rgba(255,255,255,.18); border: 1px solid rgba(255,255,255,.35); border-radius: 4px; color: #fff; font-size: 12px; font-family: inherit; padding: 5px 11px; cursor: pointer; display: flex; align-items: center; gap: 5px; transition: background .15s; white-space: nowrap; }
+    .page-mgr-btn:hover { background: rgba(255,255,255,.28); }
+    .page-mgr-dropdown { position: absolute; right: 0; top: calc(100% + 6px); background: #fff; border: 1px solid #D0D0D0; border-radius: 5px; box-shadow: 0 4px 18px rgba(0,0,0,.15); min-width: 210px; z-index: 999; padding: 10px 0 8px; }
+    .page-mgr-title { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .5px; color: #888; padding: 0 14px 8px; border-bottom: 1px solid #F0F0F0; margin-bottom: 4px; }
+    .page-mgr-item { display: flex; align-items: center; gap: 9px; padding: 7px 14px; cursor: pointer; transition: background .1s; }
+    .page-mgr-item:hover { background: #F3F3F3; }
+    .page-mgr-item input[type=checkbox] { accent-color: #4472C4; width: 14px; height: 14px; cursor: pointer; flex-shrink: 0; }
+    .page-mgr-item label { font-size: 13px; color: #252423; cursor: pointer; flex: 1; }
+    .page-mgr-item.disabled label { color: #bbb; }
+    .page-mgr-hint { font-size: 11px; color: #aaa; padding: 8px 14px 0; border-top: 1px solid #F0F0F0; margin-top: 4px; }
   </style>
 </head>
 <body>
@@ -697,16 +710,89 @@ const TABS = [
   {id:'bots',     label:'🤖 Bot Performance'},
   {id:'tokens',   label:'🔢 Token Usage'},
 ];
+
+const STORAGE_KEY = 'askme_visible_pages';
+
+function loadVisiblePages() {
+  try {
+    const saved = localStorage.getItem(STORAGE_KEY);
+    if (saved) {
+      const parsed = JSON.parse(saved);
+      if (Array.isArray(parsed) && parsed.length > 0) return new Set(parsed);
+    }
+  } catch {}
+  return new Set(TABS.map(t => t.id));
+}
+
+function PageManager({ visiblePages, onChange }) {
+  const [open, setOpen] = useState(false);
+  const wrapRef = useRef();
+
+  useEffect(() => {
+    const handler = e => { if (wrapRef.current && !wrapRef.current.contains(e.target)) setOpen(false); };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, []);
+
+  const toggle = id => {
+    const next = new Set(visiblePages);
+    if (next.has(id)) {
+      if (next.size === 1) return; // must keep at least one
+      next.delete(id);
+    } else {
+      next.add(id);
+    }
+    onChange(next);
+  };
+
+  return (
+    <div className="page-mgr-wrap" ref={wrapRef}>
+      <button className="page-mgr-btn" onClick={() => setOpen(o => !o)}>
+        ⚙ Manage Pages {open ? '▲' : '▼'}
+      </button>
+      {open && (
+        <div className="page-mgr-dropdown">
+          <div className="page-mgr-title">Show / Hide Pages</div>
+          {TABS.map(t => {
+            const checked = visiblePages.has(t.id);
+            const isLast  = visiblePages.size === 1 && checked;
+            return (
+              <div key={t.id} className={`page-mgr-item${isLast ? ' disabled' : ''}`} onClick={() => !isLast && toggle(t.id)}>
+                <input type="checkbox" id={`pm-${t.id}`} checked={checked} readOnly/>
+                <label htmlFor={`pm-${t.id}`}>{t.label}</label>
+              </div>
+            );
+          })}
+          <div className="page-mgr-hint">At least one page must stay visible.</div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 const DEF_FILTERS = {months:[],botTypes:[],modules:[],questionCategories:[]};
 
 function App() {
-  const [tab, setTab]         = useState('overview');
-  const [filters, setFilters] = useState(DEF_FILTERS);
-  const [wb, setWb]           = useState(null);   // cached workbook
-  const [data, setData]       = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError]     = useState(null);
-  const fileRef               = useRef();
+  const [tab, setTab]               = useState('overview');
+  const [filters, setFilters]       = useState(DEF_FILTERS);
+  const [wb, setWb]                 = useState(null);
+  const [data, setData]             = useState(null);
+  const [loading, setLoading]       = useState(true);
+  const [error, setError]           = useState(null);
+  const [visiblePages, setVisiblePages] = useState(loadVisiblePages);
+  const fileRef                     = useRef();
+
+  const onVisiblePagesChange = pages => {
+    setVisiblePages(pages);
+    localStorage.setItem(STORAGE_KEY, JSON.stringify([...pages]));
+    // if current tab was hidden, switch to first visible
+    if (!pages.has(tab)) {
+      const first = TABS.find(t => pages.has(t.id));
+      if (first) setTab(first.id);
+    }
+  };
+
+  const visibleTabs = TABS.filter(t => visiblePages.has(t.id));
 
   const loadWb = useCallback(async (workbook, activeFilters) => {
     setLoading(true);
@@ -781,15 +867,18 @@ function App() {
       <header className="app-header">
         <h1>AskMe Analytics Dashboard</h1>
         <span className="header-sub">AI Assistant Performance &amp; Usage Intelligence</span>
-        {wb && !loading && !error && (
-          <span style={{marginLeft:'auto',fontSize:11,opacity:.7,cursor:'pointer'}} onClick={()=>fileRef.current.click()}>
-            📂 Load different file
-          </span>
-        )}
+        <div style={{marginLeft:'auto',display:'flex',alignItems:'center',gap:10}}>
+          {wb && !loading && !error && (
+            <span style={{fontSize:11,opacity:.7,cursor:'pointer'}} onClick={()=>fileRef.current.click()}>
+              📂 Load different file
+            </span>
+          )}
+          <PageManager visiblePages={visiblePages} onChange={onVisiblePagesChange}/>
+        </div>
         <input type="file" accept=".xlsx" ref={fileRef} style={{display:'none'}} onChange={onFileChange}/>
       </header>
       <nav className="tab-bar">
-        {TABS.map(t=>(
+        {visibleTabs.map(t=>(
           <button key={t.id} className={`tab-btn${tab===t.id?' active':''}`} onClick={()=>setTab(t.id)}>{t.label}</button>
         ))}
       </nav>
