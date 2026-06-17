@@ -8,15 +8,18 @@ on:
       - 'logs/*.csv'
   workflow_dispatch:
 
+permissions:
+  contents: write
+
 jobs:
   process-logs:
     runs-on: ubuntu-latest
-
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
           token: ${{ secrets.GH_PAT }}
+          fetch-depth: 0
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -34,6 +37,7 @@ jobs:
         run: |
           git config user.name "AskMe Dashboard Bot"
           git config user.email "dashboard-bot@noreply.com"
+          git pull --rebase origin main
           git add public/AskQ_Master_Dashboard.xlsx logs/completed/
           git diff --staged --quiet && echo "Nothing to commit" && exit 0
           git commit -m "Auto: update dashboard from Ramco logs [skip ci]"
