@@ -150,9 +150,14 @@ function classifyQuestion(message) {
   return 'Unclassified';
 }
 
+// ── Excluded users (test/debug accounts) ──────────────────────────────────────
+
+const EXCLUDED_USERS = new Set(['QUADDEBUG']);
+
 // ── Row transformer ────────────────────────────────────────────────────────────
 
 function transformRawData(rows, sourceFile) {
+  rows = rows.filter(r => !EXCLUDED_USERS.has(String(r.user_name ?? '').trim()));
   const cleaned      = [];
   const llmSteps     = [];
   const tokenUsage   = [];

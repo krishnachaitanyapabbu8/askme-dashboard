@@ -157,11 +157,20 @@ const labelStep = (step) => LLM_STEP_LABELS[step] || step;
 export async function loadDashboardData(filters = {}) {
   const wb = await fetchWorkbook(MASTER_PATH);
 
-  const cleaned      = getSheet(wb, 'AskQ_Cleaned');
-  const responseTime = getSheet(wb, 'AskQ_ResponseTime');
-  const tokenUsage   = getSheet(wb, 'AskQ_TokenUsage');
-  const llmSteps     = getSheet(wb, 'AskQ_LLMSteps');
-  const flatTable    = getSheet(wb, 'PowerBI_Flat_Table');
+  const EXCLUDED_USERS = new Set(['QUADDEBUG']);
+
+  const allCleaned   = getSheet(wb, 'AskQ_Cleaned');
+  const excludedSessions = new Set(
+    allCleaned
+      .filter(r => EXCLUDED_USERS.has(String(r.User_Name ?? '').trim()))
+      .map(r => r.Session_ID)
+      .filter(Boolean)
+  );
+  const cleaned      = allCleaned.filter(r => !excludedSessions.has(r.Session_ID));
+  const responseTime = getSheet(wb, 'AskQ_ResponseTime').filter(r => !excludedSessions.has(r.Session_ID));
+  const tokenUsage   = getSheet(wb, 'AskQ_TokenUsage').filter(r => !excludedSessions.has(r.Session_ID));
+  const llmSteps     = getSheet(wb, 'AskQ_LLMSteps').filter(r => !excludedSessions.has(r.Session_ID));
+  const flatTable    = getSheet(wb, 'PowerBI_Flat_Table').filter(r => !excludedSessions.has(r.Session_ID));
 
   const filterOptions = getFilterOptions(cleaned, flatTable);
 
