@@ -1,6 +1,6 @@
 import * as XLSX from 'xlsx';
 
-const MASTER_PATH = './AskQ_Master_Dashboard.xlsx';
+const MASTER_PATH = `./AskQ_Master_Dashboard.xlsx?v=${Date.now()}`;
 
 async function fetchWorkbook(path) {
   const response = await fetch(path);
