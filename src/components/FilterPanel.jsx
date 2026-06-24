@@ -1,44 +1,63 @@
-import React from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 
-function MultiSelect({ label, options, selected, onChange, partialItems = new Set() }) {
-  const allSelected = selected.length === 0;
+function MultiSelectDropdown({ label, options, selected, onChange, partialItems = new Set() }) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef(null);
+
+  // Close when clicking outside
+  useEffect(() => {
+    const handler = (e) => { if (ref.current && !ref.current.contains(e.target)) setOpen(false); };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, []);
 
   const toggle = (val) => {
-    if (selected.includes(val)) {
-      onChange(selected.filter((v) => v !== val));
-    } else {
-      onChange([...selected, val]);
-    }
+    onChange(selected.includes(val) ? selected.filter(v => v !== val) : [...selected, val]);
   };
 
-  const clearAll = () => onChange([]);
+  const clearAll    = (e) => { e.stopPropagation(); onChange([]); };
+  const selectAll   = (e) => { e.stopPropagation(); onChange([...options]); };
+  const allSelected = selected.length === 0;
+
+  const buttonLabel = allSelected
+    ? 'All'
+    : selected.length === 1
+    ? selected[0]
+    : `${selected.length} selected`;
 
   return (
-    <div className="filter-group">
-      <div className="filter-label">
-        {label}
-        {!allSelected && (
-          <button className="filter-clear" onClick={clearAll} title="Clear filter">
-            ✕
-          </button>
-        )}
-      </div>
-      <div className="filter-options">
-        {options.map((opt) => {
-          const isActive   = selected.includes(opt);
-          const isPartial  = partialItems.has(opt);
-          return (
-            <button
-              key={opt}
-              className={`filter-chip ${isActive ? 'active' : ''}`}
-              onClick={() => toggle(opt)}
-              title={isPartial ? `${opt} — data may be incomplete` : opt}
-            >
-              {opt}{isPartial ? ' *' : ''}
-            </button>
-          );
-        })}
-      </div>
+    <div className="filter-group" ref={ref}>
+      <div className="filter-label">{label}</div>
+      <button
+        className={`filter-dropdown-btn ${!allSelected ? 'active' : ''}`}
+        onClick={() => setOpen(o => !o)}
+      >
+        <span className="filter-dropdown-value">{buttonLabel}</span>
+        <span className="filter-dropdown-arrow">{open ? '▲' : '▼'}</span>
+      </button>
+
+      {open && (
+        <div className="filter-dropdown-menu">
+          <div className="filter-dropdown-actions">
+            <button onClick={selectAll}>All</button>
+            <button onClick={clearAll}>Clear</button>
+          </div>
+          <div className="filter-dropdown-options">
+            {options.map(opt => (
+              <label key={opt} className="filter-dropdown-option">
+                <input
+                  type="checkbox"
+                  checked={selected.includes(opt)}
+                  onChange={() => toggle(opt)}
+                />
+                <span>
+                  {opt}{partialItems.has(opt) ? ' *' : ''}
+                </span>
+              </label>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -48,7 +67,6 @@ export default function FilterPanel({ filterOptions, filters, onFilterChange }) 
 
   const set = (key) => (val) => onFilterChange({ ...filters, [key]: val });
 
-  // Mark the most recent month as potentially partial
   const months = filterOptions.months ?? [];
   const partialMonths = new Set(months.length ? [months[months.length - 1]] : []);
 
@@ -58,34 +76,32 @@ export default function FilterPanel({ filterOptions, filters, onFilterChange }) 
         <span>🔽 Filters</span>
         <button
           className="filter-reset-btn"
-          onClick={() =>
-            onFilterChange({ months: [], botTypes: [], modules: [], questionCategories: [] })
-          }
+          onClick={() => onFilterChange({ months: [], botTypes: [], modules: [], questionCategories: [] })}
         >
           Reset all
         </button>
       </div>
 
-      <MultiSelect
+      <MultiSelectDropdown
         label="Month"
         options={months}
         selected={filters.months}
         onChange={set('months')}
         partialItems={partialMonths}
       />
-      <MultiSelect
+      <MultiSelectDropdown
         label="Bot Type"
         options={filterOptions.botTypes}
         selected={filters.botTypes}
         onChange={set('botTypes')}
       />
-      <MultiSelect
+      <MultiSelectDropdown
         label="Module"
         options={filterOptions.modules}
         selected={filters.modules}
         onChange={set('modules')}
       />
-      <MultiSelect
+      <MultiSelectDropdown
         label="Question Category"
         options={filterOptions.questionCategories}
         selected={filters.questionCategories}
