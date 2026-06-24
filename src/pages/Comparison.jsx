@@ -98,38 +98,31 @@ export default function Comparison({ data }) {
   return (
     <div className="page">
 
-      {/* Month pickers */}
-      <div className="comp-month-picker">
+      {/* Banner with inline dropdown selectors */}
+      <div className="comp-banner">
         {selectedMonths.map((month, i) => (
-          <div key={i} className="comp-month-selector">
-            <select
-              className="comp-month-select"
-              value={month}
-              onChange={e => updateMonth(i, e.target.value)}
-              style={{ borderColor: BAR_COLORS[i] }}
-            >
-              {allMonths.map(m => (
-                <option key={m} value={m}>{m}</option>
-              ))}
-            </select>
-            {selectedMonths.length > 2 && (
-              <button className="comp-month-remove" onClick={() => removeMonth(i)}>✕</button>
-            )}
-          </div>
+          <React.Fragment key={i}>
+            {i > 0 && <span className="comp-vs">vs</span>}
+            <div className="comp-month-selector">
+              <select
+                className="comp-month-select"
+                value={month}
+                onChange={e => updateMonth(i, e.target.value)}
+                style={{ color: BAR_COLORS[i], borderColor: BAR_COLORS[i] }}
+              >
+                {allMonths.map(m => (
+                  <option key={m} value={m}>{m}</option>
+                ))}
+              </select>
+              {selectedMonths.length > 2 && (
+                <button className="comp-month-remove" onClick={() => removeMonth(i)}>✕</button>
+              )}
+            </div>
+          </React.Fragment>
         ))}
         {canAddMore && (
           <button className="comp-add-month" onClick={addMonth}>+ Add Month</button>
         )}
-      </div>
-
-      {/* Period banner */}
-      <div className="comp-banner">
-        {selectedMonths.map((m, i) => (
-          <React.Fragment key={m}>
-            {i > 0 && <span className="comp-vs">vs</span>}
-            <span className="comp-period" style={{ color: BAR_COLORS[i], borderColor: BAR_COLORS[i] }}>{m}</span>
-          </React.Fragment>
-        ))}
       </div>
 
       {/* KPI comparison table */}

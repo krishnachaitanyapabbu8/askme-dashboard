@@ -609,13 +609,6 @@ body {
 
 /* ── MoM Comparison Page ─────────────────────────────────────────────── */
 
-.comp-month-picker {
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 10px;
-}
-
 .comp-month-selector {
   display: flex;
   align-items: center;
@@ -624,16 +617,16 @@ body {
 
 .comp-month-select {
   border: 2px solid #CBD5E1;
-  border-radius: 8px;
-  padding: 6px 12px;
-  font-size: 13px;
+  border-radius: 20px;
+  padding: 6px 16px;
+  font-size: 14px;
   font-family: inherit;
-  font-weight: 600;
-  color: #334155;
-  background: #fff;
+  font-weight: 700;
+  background: #F8FAFC;
   cursor: pointer;
   outline: none;
-  transition: border-color 0.15s;
+  transition: all 0.15s;
+  appearance: auto;
 }
 
 .comp-month-select:focus {
