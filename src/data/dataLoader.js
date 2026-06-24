@@ -556,6 +556,37 @@ export async function loadDashboardData(filters = {}) {
       .sort((a, b) => b.kbGaps - a.kbGaps);
   })();
 
+  // ── Per-month metrics (for flexible Comparison page) ──────────────────────
+
+  function computeMonthMetrics(month) {
+    const ftM  = ft.filter(r => r.Month === month);
+    const sessM = new Set(ftM.map(r => r.Session_ID));
+    const fcM  = fc.filter(r => sessM.has(r.Session_ID));
+    const uqM  = fcM.filter(r => toInt(r.Is_User_Question_Flag) === 1);
+    const botM = fcM.filter(r => r.Sender_Type === 'bot' && r.Bot_Type !== 'Unknown');
+    const ftuM = ftu.filter(r => r.Month === month);
+    const frM  = fr.filter(r => r.Month === month);
+    const issM = sumField(ftM, 'Is_Issue');
+    const brM  = botM.length;
+    return {
+      totalUserQuestions:    uqM.length,
+      activeUsers:           distinctCount(uqM.map(r => r.User_Display).filter(Boolean)),
+      totalLikes:            fcM.filter(r => r.Feedback === 'LIKE').length,
+      totalDislikes:         fcM.filter(r => r.Feedback === 'DISLIKE').length,
+      totalIssues:           issM,
+      systemErrors:          sumField(ftM, 'Is_System_Error'),
+      kbGaps:                sumField(ftM, 'Is_KB_Gap'),
+      sessionDrops:          ftM.filter(r => toInt(r.Is_Context_Drop) === 1).length,
+      overallIssueRateByBot: brM > 0 ? +((issM / brM) * 100).toFixed(1) : 0,
+      avgResponseTime:       +avgField(frM, 'Response_Time_Seconds').toFixed(1),
+      nlsqlResponses:        fcM.filter(r => r.Bot_Type === 'NLSQLAgent').length,
+      totalTokens:           ftuM.reduce((s, r) => s + toInt(r.Total_Tokens), 0),
+      avgTokensPerQuestion:  +avgField(ftuM, 'Total_Tokens').toFixed(0),
+    };
+  }
+
+  const allMonthlyMetrics = Object.fromEntries(allMonths.map(m => [m, computeMonthMetrics(m)]));
+
   // ── Month-over-Month ──────────────────────────────────────────────────────
 
   function momPct(curr, prev) {
@@ -693,6 +724,8 @@ export async function loadDashboardData(filters = {}) {
 
   return {
     filterOptions,
+    allMonths,
+    allMonthlyMetrics,
     mom,
     measures: {
       totalQuestions,

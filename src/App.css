@@ -609,6 +609,74 @@ body {
 
 /* ── MoM Comparison Page ─────────────────────────────────────────────── */
 
+.comp-month-picker {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.comp-month-selector {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.comp-month-select {
+  border: 2px solid #CBD5E1;
+  border-radius: 8px;
+  padding: 6px 12px;
+  font-size: 13px;
+  font-family: inherit;
+  font-weight: 600;
+  color: #334155;
+  background: #fff;
+  cursor: pointer;
+  outline: none;
+  transition: border-color 0.15s;
+}
+
+.comp-month-select:focus {
+  box-shadow: 0 0 0 3px rgba(68,114,196,0.15);
+}
+
+.comp-month-remove {
+  background: #F1F5F9;
+  border: none;
+  border-radius: 50%;
+  width: 22px;
+  height: 22px;
+  font-size: 11px;
+  cursor: pointer;
+  color: #64748B;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.comp-month-remove:hover {
+  background: #FEE2E2;
+  color: #DC2626;
+}
+
+.comp-add-month {
+  background: #EEF2FF;
+  border: 1px dashed #4472C4;
+  border-radius: 8px;
+  padding: 6px 14px;
+  font-size: 12px;
+  font-family: inherit;
+  font-weight: 600;
+  color: #4472C4;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.comp-add-month:hover {
+  background: #4472C4;
+  color: #fff;
+}
+
 .comp-banner {
   display: flex;
   align-items: center;
@@ -625,16 +693,9 @@ body {
   font-weight: 700;
   padding: 4px 16px;
   border-radius: 20px;
-}
-
-.comp-period.prev {
-  background: #F1F5F9;
-  color: #64748B;
-}
-
-.comp-period.curr {
-  background: #EEF2FF;
-  color: #4472C4;
+  background: #F8FAFC;
+  border: 1px solid currentColor;
+  opacity: 0.85;
 }
 
 .comp-vs {
