@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import {
   LineChart, Line, BarChart, Bar, PieChart, Pie, Cell,
   XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, ReferenceLine, LabelList,
@@ -38,12 +38,22 @@ export default function IssueAnalysis({ data }) {
   if (!data) return <div className="page-loading">Loading…</div>;
   const { measures: m, charts: c, mom, insights } = data;
   const [search, setSearch] = useState('');
+  const [expandedSessions, setExpandedSessions] = useState(new Set());
+
+  const toggleSession = useCallback((id) => {
+    setExpandedSessions(prev => {
+      const next = new Set(prev);
+      next.has(id) ? next.delete(id) : next.add(id);
+      return next;
+    });
+  }, []);
 
   const filteredIssueRows = c.issueRows.filter(r => {
     if (!search) return true;
     const q = search.toLowerCase();
+    const msgMatch = (r.messages || []).some(m => m.message.toLowerCase().includes(q));
     return (
-      (r.question || '').toLowerCase().includes(q) ||
+      msgMatch ||
       (r.user || '').toLowerCase().includes(q) ||
       (r.module || '').toLowerCase().includes(q) ||
       (r.issueType || '').toLowerCase().includes(q)
@@ -196,11 +206,11 @@ export default function IssueAnalysis({ data }) {
         </ChartCard>
       </div>
 
-      {/* Questions with Issues Table */}
+      {/* Issues Sessions Table */}
       <div style={{ marginTop: 8 }}>
         <div className="issues-table-header">
           <h3 className="issues-table-title">
-            Questions with Issues <span className="issues-table-count">({c.issueRows.length})</span>
+            Sessions with Issues <span className="issues-table-count">({c.issueRows.length} sessions)</span>
           </h3>
           <div className="issues-search-wrapper">
             <span className="issues-search-icon">🔍</span>
@@ -218,36 +228,56 @@ export default function IssueAnalysis({ data }) {
         </div>
 
         {filteredIssueRows.length === 0 ? (
-          <div className="empty-state">{search ? `No results for "${search}"` : 'No issues found for the selected filters.'}</div>
+          <div className="empty-state">
+            {search ? `No results for "${search}"` : 'No issues found for the selected filters.'}
+          </div>
         ) : (
-          <div style={{ overflowX: 'auto' }}>
-            <table className="issues-table">
-              <thead>
-                <tr>
-                  {['Date', 'User', 'Module', 'Issue Type', 'Question'].map(col => (
-                    <th key={col}>{col}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {filteredIssueRows.map((row, i) => {
-                  const style = ISSUE_TYPE_COLORS[row.issueType] || { bg: '#F1F5F9', color: '#475569' };
-                  return (
-                    <tr key={i} className={i % 2 === 0 ? 'row-even' : 'row-odd'}>
-                      <td className="td-date">{row.date}</td>
-                      <td className="td-user">{row.user || '—'}</td>
-                      <td className="td-module">{row.module || '—'}</td>
-                      <td>
-                        <span className="issue-type-badge" style={{ background: style.bg, color: style.color }}>
-                          {row.issueType}
-                        </span>
-                      </td>
-                      <td className="td-question">{row.question}</td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
+          <div className="issues-session-list">
+            {filteredIssueRows.map((row, i) => {
+              const badgeStyle = ISSUE_TYPE_COLORS[row.issueType] || { bg: '#F1F5F9', color: '#475569' };
+              const isExpanded = expandedSessions.has(row.sessionId);
+              const firstUserMsg = row.messages.find(m => m.sender === 'User');
+
+              return (
+                <div key={row.sessionId || i} className="issue-session-card">
+                  {/* Session header row — always visible */}
+                  <div
+                    className="issue-session-header"
+                    onClick={() => toggleSession(row.sessionId)}
+                  >
+                    <div className="issue-session-meta">
+                      <span className="td-date">{row.date}</span>
+                      <span className="td-user">{row.user || '—'}</span>
+                      <span className="td-module">{row.module || '—'}</span>
+                      <span className="issue-type-badge" style={{ background: badgeStyle.bg, color: badgeStyle.color }}>
+                        {row.issueType}
+                      </span>
+                    </div>
+                    <div className="issue-session-preview">
+                      <span className="issue-session-preview-text">
+                        {firstUserMsg?.message?.slice(0, 100) ?? '—'}
+                        {(firstUserMsg?.message?.length ?? 0) > 100 ? '…' : ''}
+                      </span>
+                      <span className="issue-session-toggle">
+                        {isExpanded ? '▲ Hide' : `▼ View conversation (${row.messages.length} messages)`}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Expanded conversation thread */}
+                  {isExpanded && (
+                    <div className="issue-conversation">
+                      {row.messages.map((msg, mi) => (
+                        <div key={mi} className={`conv-message conv-${msg.sender.toLowerCase()}`}>
+                          <span className="conv-sender">{msg.sender === 'User' ? '👤 User' : '🤖 Bot'}</span>
+                          <p className="conv-text">{msg.message}</p>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
           </div>
         )}
       </div>

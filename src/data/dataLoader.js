@@ -524,27 +524,63 @@ export async function loadDashboardData(filters = {}) {
     };
   });
 
-  // Issue questions table — user questions from sessions flagged as Is_Issue = 1
-  const issueSessions = new Set(ft.filter(r => toInt(r.Is_Issue) === 1).map(r => r.Session_ID));
-  const issueRows = userQuestions
-    .filter(r => issueSessions.has(r.Session_ID))
-    .map(r => {
-      const sessionFt = ft.filter(f => f.Session_ID === r.Session_ID);
-      const isSystemError = sessionFt.some(f => toInt(f.Is_System_Error) === 1);
-      const isKbGap       = sessionFt.some(f => toInt(f.Is_KB_Gap) === 1);
-      const issueType     = isSystemError ? 'System Error'
-                          : isKbGap       ? "Training Bot Couldn't Answer"
-                          :                 'Issue';
-      return {
-        date:      r.Date,
-        month:     r.Month,
-        user:      r.User_Display ?? '',
-        module:    sessionToModule[r.Session_ID] ?? '',
-        question:  r.Message ?? '',
-        issueType,
-      };
-    })
-    .sort((a, b) => a.date > b.date ? -1 : 1);
+  // Issue sessions table — grouped by session, includes full conversation thread
+  // Each session with Is_Issue=1 becomes one row, expandable to show all messages
+  const issueSessionIds = new Set(ft.filter(r => toInt(r.Is_Issue) === 1).map(r => r.Session_ID));
+
+  const issueRows = (() => {
+    const sessionMap = {};
+
+    // Build session entries from all cleaned rows (Human + bot)
+    for (const r of fc) {
+      const sid = r.Session_ID;
+      if (!issueSessionIds.has(sid)) continue;
+
+      if (!sessionMap[sid]) {
+        const sessionFt    = ft.filter(f => f.Session_ID === sid);
+        const isSystemError = sessionFt.some(f => toInt(f.Is_System_Error) === 1);
+        const isKbGap       = sessionFt.some(f => toInt(f.Is_KB_Gap) === 1);
+        sessionMap[sid] = {
+          sessionId:  sid,
+          date:       '',
+          month:      r.Month ?? '',
+          user:       '',
+          module:     sessionToModule[sid] ?? '',
+          issueType:  isSystemError ? 'System Error'
+                    : isKbGap       ? "Training Bot Couldn't Answer"
+                    :                 'Issue',
+          messages:   [],
+        };
+      }
+
+      const entry = sessionMap[sid];
+
+      // Use the first human message date/user as the session header
+      if (r.Sender_Type === 'Human' && !entry.user) {
+        entry.user  = r.User_Display ?? '';
+        entry.date  = r.Date ?? '';
+      }
+
+      // Only include messages with actual text content (skip empty bot greetings if desired)
+      if (r.Message && String(r.Message).trim()) {
+        entry.messages.push({
+          sender:  r.Sender_Type === 'bot' ? 'Bot' : 'User',
+          message: String(r.Message).trim(),
+        });
+      }
+    }
+
+    return Object.values(sessionMap)
+      .filter(s => s.messages.length > 0)
+      .sort((a, b) => {
+        // Sort by date descending (convert DD-MM-YYYY → YYYY-MM-DD for comparison)
+        const toIso = d => {
+          const m = String(d).match(/^(\d{1,2})-(\d{1,2})-(\d{4})$/);
+          return m ? `${m[3]}-${m[2].padStart(2,'0')}-${m[1].padStart(2,'0')}` : d;
+        };
+        return toIso(b.date) > toIso(a.date) ? 1 : -1;
+      });
+  })();
 
   // KB Gaps by Module — which modules have the most training gaps
   const kbGapsByModule = (() => {

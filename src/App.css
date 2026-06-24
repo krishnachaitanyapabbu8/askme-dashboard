@@ -1059,6 +1059,127 @@ body {
   white-space: nowrap;
 }
 
+/* ── Issue Session Cards ───────────────────────────────────────────────── */
+
+.issues-session-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.issue-session-card {
+  background: #fff;
+  border: 1px solid #E2E8F0;
+  border-radius: 10px;
+  overflow: hidden;
+  transition: box-shadow 0.15s;
+}
+
+.issue-session-card:hover {
+  box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+}
+
+.issue-session-header {
+  padding: 12px 16px;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  user-select: none;
+}
+
+.issue-session-header:hover {
+  background: #F8FAFC;
+}
+
+.issue-session-meta {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.issue-session-preview {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.issue-session-preview-text {
+  font-size: 12px;
+  color: #475569;
+  line-height: 1.4;
+  flex: 1;
+}
+
+.issue-session-toggle {
+  font-size: 11px;
+  color: #4472C4;
+  font-weight: 600;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+/* ── Conversation Thread ───────────────────────────────────────────────── */
+
+.issue-conversation {
+  border-top: 1px solid #F1F5F9;
+  padding: 12px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  background: #FAFBFC;
+}
+
+.conv-message {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  max-width: 85%;
+}
+
+.conv-message.conv-user {
+  align-self: flex-start;
+}
+
+.conv-message.conv-bot {
+  align-self: flex-end;
+}
+
+.conv-sender {
+  font-size: 10px;
+  font-weight: 700;
+  color: #94A3B8;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.conv-message.conv-bot .conv-sender {
+  text-align: right;
+}
+
+.conv-text {
+  font-size: 12px;
+  line-height: 1.5;
+  padding: 8px 12px;
+  border-radius: 10px;
+  margin: 0;
+}
+
+.conv-message.conv-user .conv-text {
+  background: #EEF2FF;
+  color: #1E3A8A;
+  border-bottom-left-radius: 2px;
+}
+
+.conv-message.conv-bot .conv-text {
+  background: #F1F5F9;
+  color: #334155;
+  border-bottom-right-radius: 2px;
+  text-align: right;
+}
+
 /* ── Recharts overrides ───────────────────────────────────────────────── */
 
 .recharts-cartesian-axis-tick-value {
