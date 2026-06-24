@@ -15,7 +15,7 @@ const KPI_ROWS = [
   { key: 'totalIssues',           label: 'Total Issues',         format: 'number',  invert: true  },
   { key: 'systemErrors',          label: 'System Errors',        format: 'number',  invert: true  },
   { key: 'kbGaps',                label: "Questions Training Bot Couldn't Answer", format: 'number',  invert: true  },
-  { key: 'sessionDrops',          label: 'Lost Conversations',   format: 'number',  invert: true  },
+  { key: 'sessionDrops',          label: 'Bot Forgot the Conversation', format: 'number',  invert: true  },
   { key: 'overallIssueRateByBot', label: 'Issue Rate',           format: 'percent', invert: true  },
   { key: 'avgResponseTime',       label: 'Avg Response Time',    format: 'time',    invert: true  },
   { key: 'nlsqlResponses',        label: 'NLSQLAgent Responses', format: 'number',  invert: false },

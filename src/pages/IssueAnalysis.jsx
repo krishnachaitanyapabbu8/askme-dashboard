@@ -35,7 +35,7 @@ export default function IssueAnalysis({ data }) {
         <KPICard label="Questions Training Bot Couldn't Answer" value={m.kbGaps} accent="#4472C4" trend={mom.kbGaps} invertTrend />
         <KPICard label="System Errors"        value={m.systemErrors} accent="#FF0000" trend={mom.systemErrors} invertTrend />
         <KPICard label="Total Issues"         value={m.totalIssues}  accent="#ED7D31" trend={mom.totalIssues}  invertTrend />
-        <KPICard label="Lost Conversations"   value={m.sessionDrops} accent="#70AD47" trend={mom.sessionDrops} invertTrend />
+        <KPICard label="Bot Forgot the Conversation" value={m.sessionDrops} accent="#70AD47" trend={mom.sessionDrops} invertTrend />
       </div>
 
       {/* Row 1: Total Issue Trend | Issues by Type */}
