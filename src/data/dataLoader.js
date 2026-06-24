@@ -193,7 +193,7 @@ export async function loadDashboardData(filters = {}) {
     // ── Excel fallback mode ───────────────────────────────────────────────
     const wb = await fetchWorkbook(MASTER_PATH);
 
-    const EXCLUDED_USERS = new Set(['QUADDEBUG']);
+    const EXCLUDED_USERS = new Set(['QUADDEBUG', 'RAMCOUSER']);
     const allCleaned     = getSheet(wb, 'AskQ_Cleaned');
     const excludedSessions = new Set(
       allCleaned

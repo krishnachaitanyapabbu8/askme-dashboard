@@ -152,7 +152,7 @@ function classifyQuestion(message) {
 
 // ── Excluded users (test/debug accounts) ──────────────────────────────────────
 
-const EXCLUDED_USERS = new Set(['QUADDEBUG']);
+const EXCLUDED_USERS = new Set(['QUADDEBUG', 'RAMCOUSER']);
 
 // ── Row transformer ────────────────────────────────────────────────────────────
 
