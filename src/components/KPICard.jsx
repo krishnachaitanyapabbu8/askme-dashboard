@@ -47,9 +47,10 @@ function TrendBadge({ trend, invert }) {
 // ── KPI Card Component ────────────────────────────────────────────────────────
 
 export default function KPICard({ label, value, format = 'number', accent, sub, trend, invertTrend }) {
+  const labelFontSize = label.length > 24 ? '11px' : label.length > 16 ? '12px' : '13px';
   return (
     <div className="kpi-card" style={accent ? { borderTopColor: accent } : {}}>
-      <div className="kpi-label">{label}</div>
+      <div className="kpi-label" style={{ fontSize: labelFontSize }}>{label}</div>
       <div className="kpi-value" style={accent ? { color: accent } : {}}>{fmt(value, format)}</div>
       {sub && <div className="kpi-sub">{sub}</div>}
       <TrendBadge trend={trend} invert={invertTrend} />

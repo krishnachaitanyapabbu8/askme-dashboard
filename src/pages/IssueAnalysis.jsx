@@ -32,7 +32,7 @@ export default function IssueAnalysis({ data }) {
     <div className="page">
       {/* KPI Row */}
       <div className="kpi-row">
-        <KPICard label="Unanswered Questions" value={m.kbGaps}       accent="#4472C4" trend={mom.kbGaps}       invertTrend />
+        <KPICard label="Questions Training Bot Couldn't Answer" value={m.kbGaps} accent="#4472C4" trend={mom.kbGaps} invertTrend />
         <KPICard label="System Errors"        value={m.systemErrors} accent="#FF0000" trend={mom.systemErrors} invertTrend />
         <KPICard label="Total Issues"         value={m.totalIssues}  accent="#ED7D31" trend={mom.totalIssues}  invertTrend />
         <KPICard label="Lost Conversations"   value={m.sessionDrops} accent="#70AD47" trend={mom.sessionDrops} invertTrend />
@@ -125,7 +125,7 @@ export default function IssueAnalysis({ data }) {
           </ResponsiveContainer>
         </ChartCard>
 
-        <ChartCard title="Unanswered Questions by ERP Module" scrollable minHeight={300} topNOptions={[10, 20, 'all']}>
+        <ChartCard title="Questions Training Bot Couldn't Answer by ERP Module" scrollable minHeight={300} topNOptions={[10, 20, 'all']}>
           {(n) => {
             const d = c.kbGapsByModule.slice(0, n);
             return (
@@ -134,10 +134,10 @@ export default function IssueAnalysis({ data }) {
                   margin={{ top: 5, right: 30, left: 20, bottom: 25 }}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#E0E0E0" horizontal={false} />
                   <XAxis type="number" tick={{ fontSize: 11 }}
-                    label={{ value: 'Unanswered Questions', position: 'insideBottom', offset: -8, ...AL }} />
+                    label={{ value: 'Count', position: 'insideBottom', offset: -8, ...AL }} />
                   <YAxis dataKey="module" type="category" tick={{ fontSize: 11 }} width={120} />
                   <Tooltip contentStyle={{ fontSize: 12 }} />
-                  <Bar dataKey="kbGaps" name="Unanswered Questions" fill="#4472C4" radius={[0, 3, 3, 0]} />
+                  <Bar dataKey="kbGaps" name="Questions Training Bot Couldn't Answer" fill="#4472C4" radius={[0, 3, 3, 0]} />
                 </BarChart>
               </ResponsiveContainer>
             );

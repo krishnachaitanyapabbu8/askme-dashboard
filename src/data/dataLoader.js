@@ -335,7 +335,7 @@ export async function loadDashboardData(filters = {}) {
 
   // Pie: Issues by Type
   const issueBreakdown = [
-    { name: 'Unanswered Questions', value: kbGaps },
+    { name: "Questions Training Bot Couldn't Answer", value: kbGaps },
     { name: 'Lost Conversations',   value: sessionDrops },
     { name: 'System Errors',        value: systemErrors },
   ].filter(d => d.value > 0);

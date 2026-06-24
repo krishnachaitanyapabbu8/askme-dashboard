@@ -14,7 +14,7 @@ const KPI_ROWS = [
   { key: 'totalDislikes',         label: 'Dislikes',             format: 'number',  invert: true  },
   { key: 'totalIssues',           label: 'Total Issues',         format: 'number',  invert: true  },
   { key: 'systemErrors',          label: 'System Errors',        format: 'number',  invert: true  },
-  { key: 'kbGaps',                label: 'Unanswered Questions', format: 'number',  invert: true  },
+  { key: 'kbGaps',                label: "Questions Training Bot Couldn't Answer", format: 'number',  invert: true  },
   { key: 'sessionDrops',          label: 'Lost Conversations',   format: 'number',  invert: true  },
   { key: 'overallIssueRateByBot', label: 'Issue Rate',           format: 'percent', invert: true  },
   { key: 'avgResponseTime',       label: 'Avg Response Time',    format: 'time',    invert: true  },
