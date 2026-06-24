@@ -335,11 +335,9 @@ export async function loadDashboardData(filters = {}) {
 
   // Pie: Issues by Type
   const issueBreakdown = [
-    { name: 'KB Gaps',       value: kbGaps },
-    { name: 'Context Drops', value: sessionDrops },
-    { name: 'System Errors', value: systemErrors },
-    { name: 'Masked Data',   value: maskedData },
-    { name: 'Copilot Loops', value: copilotLoops },
+    { name: 'Unanswered Questions', value: kbGaps },
+    { name: 'Lost Conversations',   value: sessionDrops },
+    { name: 'System Errors',        value: systemErrors },
   ].filter(d => d.value > 0);
 
   // Horizontal bar: Issues by Module (all modules)
