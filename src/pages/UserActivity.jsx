@@ -1,35 +1,48 @@
 import React, { useState } from 'react';
 import {
   LineChart, Line, BarChart, Bar,
-  XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
+  XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, LabelList,
 } from 'recharts';
 import KPICard from '../components/KPICard';
 import ChartCard from '../components/ChartCard';
+import PageInsight from '../components/PageInsight';
 import DrilldownModal from '../components/DrilldownModal';
 
 const COLORS = ['#4472C4', '#ED7D31', '#A5A5A5', '#FFC000', '#70AD47', '#FF0000'];
 const AL = { style: { textAnchor: 'middle', fontSize: 11, fill: '#94A3B8' } };
 const BAR_H = 36;
 
+const EmptyState = ({ message = 'No data for the selected filters.' }) => (
+  <div className="empty-state">{message}</div>
+);
+
 export default function UserActivity({ data }) {
   if (!data) return <div className="page-loading">Loading…</div>;
-  const { measures: m, charts: c, mom } = data;
+  const { measures: m, charts: c, mom, insights } = data;
   const [drilldownUser, setDrilldownUser] = useState(null);
 
   return (
     <div className="page">
-      <DrilldownModal
-        user={drilldownUser}
-        rows={c.drilldownRows}
-        onClose={() => setDrilldownUser(null)}
+      <DrilldownModal user={drilldownUser} rows={c.drilldownRows} onClose={() => setDrilldownUser(null)} />
+
+      <PageInsight
+        title="User Activity"
+        subtitle="Understand who is using the chatbot, how often, and what they're asking."
+        insight={insights?.users}
       />
+
       {/* KPI Row */}
       <div className="kpi-row">
-        <KPICard label="Active Users"         value={m.activeUsers}         trend={mom.activeUsers} />
-        <KPICard label="Avg Questions / User" value={m.avgQuestionsPerUser} />
-        <KPICard label="Total Sessions"       value={m.totalSessions}       trend={mom.totalSessions} />
-        <KPICard label="Avg Sessions / User"  value={m.avgSessionsPerUser} />
-        <KPICard label="Repeat Question Rate" value={m.repeatQuestionRate}  format="percent" accent="#FFC000" invertTrend />
+        <KPICard label="Active Users" value={m.activeUsers} trend={mom.activeUsers}
+          prevValue={mom?.previous?.activeUsers} sub="Unique users who asked questions" />
+        <KPICard label="Avg Questions / User" value={m.avgQuestionsPerUser}
+          sub="Average questions per active user" />
+        <KPICard label="Total Sessions" value={m.totalSessions} trend={mom.totalSessions}
+          sub="Unique conversation sessions" />
+        <KPICard label="Avg Sessions / User" value={m.avgSessionsPerUser}
+          sub="Sessions per active user" />
+        <KPICard label="Repeat Question Rate" value={m.repeatQuestionRate} format="percent"
+          accent="#FFC000" invertTrend sub="% of questions asked more than once" />
       </div>
 
       {/* Row 1: Questions by User | Active Users by Month */}
@@ -37,10 +50,10 @@ export default function UserActivity({ data }) {
         <ChartCard title="Questions by User — click a bar to drill down" scrollable minHeight={320} topNOptions={[10, 20, 'all']}>
           {(n) => {
             const d = c.questionsByUser.slice(0, n);
+            if (d.length === 0) return <EmptyState />;
             return (
               <ResponsiveContainer width="100%" height={Math.max(280, d.length * BAR_H)}>
-                <BarChart layout="vertical" data={d}
-                  margin={{ top: 5, right: 30, left: 20, bottom: 25 }}>
+                <BarChart layout="vertical" data={d} margin={{ top: 5, right: 50, left: 20, bottom: 25 }}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#E0E0E0" horizontal={false} />
                   <XAxis type="number" tick={{ fontSize: 11 }}
                     label={{ value: 'Questions', position: 'insideBottom', offset: -8, ...AL }} />
@@ -48,7 +61,9 @@ export default function UserActivity({ data }) {
                   <Tooltip contentStyle={{ fontSize: 12 }} />
                   <Bar dataKey="count" name="Questions" fill="#4472C4" radius={[0, 3, 3, 0]}
                     style={{ cursor: 'pointer' }}
-                    onClick={(payload) => setDrilldownUser(payload.user)} />
+                    onClick={(payload) => setDrilldownUser(payload.user)}>
+                    <LabelList dataKey="count" position="right" style={{ fontSize: 10, fill: '#64748B' }} />
+                  </Bar>
                 </BarChart>
               </ResponsiveContainer>
             );
@@ -56,17 +71,21 @@ export default function UserActivity({ data }) {
         </ChartCard>
 
         <ChartCard title="Active Users by Month" minHeight={320}>
-          <ResponsiveContainer width="100%" height={280}>
-            <LineChart data={c.activeUsersByMonth} margin={{ top: 5, right: 20, left: 15, bottom: 5 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#E0E0E0" />
-              <XAxis dataKey="month" tick={{ fontSize: 11 }} />
-              <YAxis tick={{ fontSize: 11 }}
-                label={{ value: 'Users', angle: -90, position: 'insideLeft', offset: 10, ...AL }} />
-              <Tooltip contentStyle={{ fontSize: 12 }} />
-              <Line type="monotone" dataKey="activeUsers" name="Active Users"
-                stroke="#4472C4" strokeWidth={2} dot={{ r: 3 }} activeDot={{ r: 5 }} />
-            </LineChart>
-          </ResponsiveContainer>
+          {c.activeUsersByMonth.every(d => d.activeUsers === 0) ? <EmptyState /> : (
+            <ResponsiveContainer width="100%" height={280}>
+              <LineChart data={c.activeUsersByMonth} margin={{ top: 10, right: 20, left: 15, bottom: 5 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#E0E0E0" />
+                <XAxis dataKey="month" tick={{ fontSize: 11 }} />
+                <YAxis tick={{ fontSize: 11 }}
+                  label={{ value: 'Users', angle: -90, position: 'insideLeft', offset: 10, ...AL }} />
+                <Tooltip contentStyle={{ fontSize: 12 }} />
+                <Line type="monotone" dataKey="activeUsers" name="Active Users"
+                  stroke="#4472C4" strokeWidth={2.5} dot={{ r: 4 }} activeDot={{ r: 6 }}>
+                  <LabelList dataKey="activeUsers" position="top" style={{ fontSize: 10, fill: '#4472C4', fontWeight: 600 }} />
+                </Line>
+              </LineChart>
+            </ResponsiveContainer>
+          )}
         </ChartCard>
       </div>
 
@@ -75,10 +94,10 @@ export default function UserActivity({ data }) {
         <ChartCard title="Questions by User per Module" scrollable minHeight={320} topNOptions={[10, 20, 'all']}>
           {(n) => {
             const d = c.questionsByUserModule.slice(0, n);
+            if (d.length === 0 || c.chartModules.length === 0) return <EmptyState />;
             return (
               <ResponsiveContainer width="100%" height={Math.max(280, d.length * BAR_H)}>
-                <BarChart layout="vertical" data={d}
-                  margin={{ top: 5, right: 30, left: 20, bottom: 25 }}>
+                <BarChart layout="vertical" data={d} margin={{ top: 5, right: 30, left: 20, bottom: 25 }}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#E0E0E0" horizontal={false} />
                   <XAxis type="number" tick={{ fontSize: 11 }}
                     label={{ value: 'Questions', position: 'insideBottom', offset: -8, ...AL }} />
@@ -99,10 +118,10 @@ export default function UserActivity({ data }) {
         <ChartCard title="Questions by Category per User" scrollable minHeight={320} topNOptions={[10, 20, 'all']}>
           {(n) => {
             const d = c.questionsByUserCategory.slice(0, n);
+            if (d.length === 0 || c.chartCategories.length === 0) return <EmptyState />;
             return (
               <ResponsiveContainer width="100%" height={Math.max(280, d.length * BAR_H)}>
-                <BarChart layout="vertical" data={d}
-                  margin={{ top: 5, right: 30, left: 20, bottom: 25 }}>
+                <BarChart layout="vertical" data={d} margin={{ top: 5, right: 30, left: 20, bottom: 25 }}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#E0E0E0" horizontal={false} />
                   <XAxis type="number" tick={{ fontSize: 11 }}
                     label={{ value: 'Questions', position: 'insideBottom', offset: -8, ...AL }} />

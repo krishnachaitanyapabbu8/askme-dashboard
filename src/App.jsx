@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import './App.css';
 import { loadDashboardData } from './data/dataLoader';
 import FilterPanel from './components/FilterPanel';
+import { SkeletonPage } from './components/Skeleton';
 import ExecutiveOverview from './pages/ExecutiveOverview';
 import IssueAnalysis from './pages/IssueAnalysis';
 import UserActivity from './pages/UserActivity';
@@ -58,14 +59,7 @@ export default function App() {
   };
 
   const renderPage = () => {
-    if (loading) {
-      return (
-        <div className="loading-screen">
-          <div className="spinner" />
-          <div>Loading dashboard data…</div>
-        </div>
-      );
-    }
+    if (loading) return <SkeletonPage />;
     if (error) {
       return (
         <div className="error-screen">
@@ -94,9 +88,9 @@ export default function App() {
       {/* Header */}
       <header className="app-header">
         <h1>AskMe Analytics Dashboard</h1>
-        {data?.filterOptions?.months?.length > 0 && (
+        {data?.lastUpdated && (
           <span className="header-last-updated">
-            Data through {data.filterOptions.months[data.filterOptions.months.length - 1]}
+            🗓 Last updated: {data.lastUpdated}
           </span>
         )}
       </header>

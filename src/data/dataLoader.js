@@ -720,12 +720,49 @@ export async function loadDashboardData(filters = {}) {
     };
   })();
 
+  // ── Last updated date ────────────────────────────────────────────────────
+  const lastUpdated = (() => {
+    const dates = fc.map(r => r.Date).filter(Boolean).sort();
+    return dates[dates.length - 1] ?? null;
+  })();
+
+  // ── Page insights (auto-generated key takeaway per page) ─────────────────
+  const topModule  = questionsByModule[0]?.module ?? null;
+  const topUser    = questionsByUser[0]?.user ?? null;
+  const topBotType = botResponsesByBotType[0]?.bot ?? null;
+  const topStep    = tokensByStep[0]?.step ?? null;
+  const latestMonth = allMonths[allMonths.length - 1] ?? null;
+
+  const insights = {
+    overview: topModule && latestMonth
+      ? `${latestMonth} data: ${totalUserQuestions.toLocaleString()} questions from ${activeUsers} users across ${questionsByModule.length} ERP modules. Top module: ${topModule}.`
+      : `${totalUserQuestions.toLocaleString()} total questions from ${activeUsers} active users.`,
+
+    issues: totalIssues > 0
+      ? `${totalIssues} issues flagged. ${systemErrors > 0 ? `${systemErrors} system errors` : ''} ${kbGaps > 0 ? `· ${kbGaps} questions the Training Bot couldn't answer` : ''}${sessionDrops > 0 ? ` · ${sessionDrops} forgotten conversations` : ''}.`.replace(/^·\s*/, '').trim()
+      : 'No issues flagged in the selected period — everything looks healthy.',
+
+    users: topUser
+      ? `${activeUsers} active users this period. ${topUser} leads with ${questionsByUser[0]?.count ?? 0} questions. Average ${Math.round(avgQuestionsPerUser)} questions per user.`
+      : `${activeUsers} active users with ${totalUserQuestions.toLocaleString()} questions total.`,
+
+    bots: topBotType
+      ? `${topBotType} handled the most responses. Average response time: ${+avgResponseTime.toFixed(1)}s. Overall issue rate: ${overallIssueRateByBot}%.`
+      : `Average response time: ${+avgResponseTime.toFixed(1)}s across all bot types.`,
+
+    tokens: topStep
+      ? `${totalTokens.toLocaleString()} total tokens consumed. ${topStep} is the most token-intensive LLM step at an average of ${tokensByStep[0]?.avgTokens?.toLocaleString() ?? 0} tokens.`
+      : `${totalTokens.toLocaleString()} total tokens used across ${queriesTracked} tracked queries.`,
+  };
+
   // ─── Return ────────────────────────────────────────────────────────────────
 
   return {
     filterOptions,
     allMonths,
     allMonthlyMetrics,
+    lastUpdated,
+    insights,
     mom,
     measures: {
       totalQuestions,
