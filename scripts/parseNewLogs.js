@@ -285,17 +285,24 @@ function transformRawData(rows, sourceFile) {
     }
 
     // ── PowerBI_Flat_Table ─────────────────────────────────────────────────────
+    // Is_Issue = 1 whenever any issue sub-flag is set
+    const isKbGap           = 0; // manually flagged via log review
+    const isPlaceholderData = 0; // manually flagged via log review
+    const isCopilotLoop     = 0; // manually flagged via log review
+    const isContextDrop     = 0; // manually flagged via log review
+    const isAnyIssue        = queryFailed || isKbGap || isPlaceholderData || isCopilotLoop || isContextDrop;
+
     flatTable.push({
       Session_ID:          sessionId,
       Month:               month,
       Module:              module,
       Bot_Type:            botType,
-      Is_Issue:            queryFailed,
+      Is_Issue:            isAnyIssue ? 1 : 0,
       Is_System_Error:     queryFailed,
-      Is_KB_Gap:           0,
-      Is_Placeholder_Data: 0,
-      Is_Copilot_Loop:     0,
-      Is_Context_Drop:     0,
+      Is_KB_Gap:           isKbGap,
+      Is_Placeholder_Data: isPlaceholderData,
+      Is_Copilot_Loop:     isCopilotLoop,
+      Is_Context_Drop:     isContextDrop,
       Source_File:         sourceFile,
     });
   }
