@@ -1,6 +1,30 @@
 import * as XLSX from 'xlsx';
 
+// ─── Data source configuration ────────────────────────────────────────────────
+//
+// Set VITE_API_URL in your .env file to switch to live DB mode:
+//   VITE_API_URL=https://your-django-app.com
+//   VITE_API_KEY=your-secret-key
+//
+// Leave VITE_API_URL unset to fall back to the local Excel file.
+
+const API_BASE  = import.meta.env.VITE_API_URL  || '';
+const API_KEY   = import.meta.env.VITE_API_KEY   || '';
 const MASTER_PATH = `./AskQ_Master_Dashboard.xlsx?v=${Date.now()}`;
+
+// ─── API loader ───────────────────────────────────────────────────────────────
+
+async function fetchFromAPI() {
+  const headers = { 'Content-Type': 'application/json' };
+  if (API_KEY) headers['X-Api-Key'] = API_KEY;
+
+  const res = await fetch(`${API_BASE}/analytics/dashboard-data`, { headers });
+  if (!res.ok) throw new Error(`API error ${res.status}: ${res.statusText}`);
+  const json = await res.json();
+  return json.data;
+}
+
+// ─── Excel loader (fallback) ──────────────────────────────────────────────────
 
 async function fetchWorkbook(path) {
   const response = await fetch(path);
@@ -155,22 +179,35 @@ const labelStep = (step) => LLM_STEP_LABELS[step] || step;
 // ─── Main Loader ───────────────────────────────────────────────────────────────
 
 export async function loadDashboardData(filters = {}) {
-  const wb = await fetchWorkbook(MASTER_PATH);
+  let cleaned, responseTime, tokenUsage, llmSteps, flatTable;
 
-  const EXCLUDED_USERS = new Set(['QUADDEBUG']);
+  if (API_BASE) {
+    // ── Live DB mode — fetch from Django API ──────────────────────────────
+    const data = await fetchFromAPI();
+    cleaned      = (data.cleaned       || []).map(r => ({ ...r, Month: normalizeMonth(r.Month) }));
+    responseTime = (data.response_times || []).map(r => ({ ...r, Month: normalizeMonth(r.Month) }));
+    tokenUsage   = (data.token_usage    || []).map(r => ({ ...r, Month: normalizeMonth(r.Month) }));
+    llmSteps     = (data.llm_steps      || []).map(r => ({ ...r, Month: normalizeMonth(r.Month) }));
+    flatTable    = (data.flat_table     || []).map(r => ({ ...r, Month: normalizeMonth(r.Month) }));
+  } else {
+    // ── Excel fallback mode ───────────────────────────────────────────────
+    const wb = await fetchWorkbook(MASTER_PATH);
 
-  const allCleaned   = getSheet(wb, 'AskQ_Cleaned');
-  const excludedSessions = new Set(
-    allCleaned
-      .filter(r => EXCLUDED_USERS.has(String(r.User_Name ?? '').trim()))
-      .map(r => r.Session_ID)
-      .filter(Boolean)
-  );
-  const cleaned      = allCleaned.filter(r => !excludedSessions.has(r.Session_ID));
-  const responseTime = getSheet(wb, 'AskQ_ResponseTime').filter(r => !excludedSessions.has(r.Session_ID));
-  const tokenUsage   = getSheet(wb, 'AskQ_TokenUsage').filter(r => !excludedSessions.has(r.Session_ID));
-  const llmSteps     = getSheet(wb, 'AskQ_LLMSteps').filter(r => !excludedSessions.has(r.Session_ID));
-  const flatTable    = getSheet(wb, 'PowerBI_Flat_Table').filter(r => !excludedSessions.has(r.Session_ID));
+    const EXCLUDED_USERS = new Set(['QUADDEBUG']);
+    const allCleaned     = getSheet(wb, 'AskQ_Cleaned');
+    const excludedSessions = new Set(
+      allCleaned
+        .filter(r => EXCLUDED_USERS.has(String(r.User_Name ?? '').trim()))
+        .map(r => r.Session_ID)
+        .filter(Boolean)
+    );
+
+    cleaned      = allCleaned.filter(r => !excludedSessions.has(r.Session_ID));
+    responseTime = getSheet(wb, 'AskQ_ResponseTime').filter(r => !excludedSessions.has(r.Session_ID));
+    tokenUsage   = getSheet(wb, 'AskQ_TokenUsage').filter(r => !excludedSessions.has(r.Session_ID));
+    llmSteps     = getSheet(wb, 'AskQ_LLMSteps').filter(r => !excludedSessions.has(r.Session_ID));
+    flatTable    = getSheet(wb, 'PowerBI_Flat_Table').filter(r => !excludedSessions.has(r.Session_ID));
+  }
 
   const filterOptions = getFilterOptions(cleaned, flatTable);
 

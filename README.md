@@ -257,31 +257,82 @@ ALTER TABLE users ADD COLUMN is_admin BOOLEAN DEFAULT FALSE;
 
 ---
 
-## Developer Tasks
+## Live DB Integration (replacing Excel)
 
-The following items need to be completed as part of integrating this dashboard into the organisation's systems:
+The dashboard supports two data modes:
+
+### Mode 1 — Excel (current, temporary)
+Dashboard loads `AskQ_Master_Dashboard.xlsx` at runtime. Requires manual log processing.
+
+### Mode 2 — Live API (target)
+Dashboard fetches data directly from `rerp-reporting-app` via a REST API. No Excel, no manual steps — always live data.
+
+**What's already built:**
+
+| File | What it does |
+|---|---|
+| `rerp-reporting-app/analytics/utils/dashboard_builder.py` | Python port of the log parser — transforms raw DB messages into dashboard-ready data |
+| `rerp-reporting-app/analytics/views/analytics_views.py` | `DashboardDataView` — new endpoint `GET /analytics/dashboard-data` |
+| `rerp-reporting-app/analytics/urls.py` | Route registered |
+| `src/data/dataLoader.js` | Updated to call API when `VITE_API_URL` is set, falls back to Excel otherwise |
+| `.env.example` | Environment variable reference |
+
+**To activate live DB mode:**
+
+1. Deploy `rerp-reporting-app` with the new endpoint
+2. Set `DASHBOARD_API_KEY` env var on the Django server
+3. Set these env vars when building the dashboard:
+   ```
+   VITE_API_URL=https://your-django-app.com
+   VITE_API_KEY=your-secret-api-key
+   ```
+4. Run `npm run build` — the dashboard will now fetch live data
+
+**API endpoint:**
+```
+GET /analytics/dashboard-data
+Headers: X-Api-Key: <DASHBOARD_API_KEY>
+Query params (optional):
+  from_date=YYYY-MM-DD
+  to_date=YYYY-MM-DD
+```
+
+**CORS:** The Django app must allow requests from the dashboard domain. Add the dashboard URL to `CORS_ALLOWED_ORIGINS` in Django settings (requires `django-cors-headers`).
+
+---
+
+## Developer Tasks
 
 ### P0 — Before Go-Live
 
 - [ ] **Migrate to org repo** — move codebase to the organisation's Git repository
 - [ ] **Set up CI/CD** — configure the org's deployment pipeline to run `npm run build` and serve the `dist/` folder
 - [ ] **Remove Vercel-specific files** — `middleware.js` and `vercel.json` are not needed outside Vercel
-- [ ] **Implement Basic Auth at web server level** — until JWT is ready, protect the dashboard with Basic Auth at nginx / IIS / proxy level
-- [ ] **Set `Cache-Control: no-cache` on the Excel file** — ensures users always load fresh data after log updates
+- [ ] **Implement Basic Auth at web server level** — until JWT is ready, protect the dashboard at nginx / IIS / proxy level
+- [ ] **Add `django-cors-headers`** to `rerp-reporting-app` and allow the dashboard domain
+- [ ] **Deploy `DashboardDataView`** — the new endpoint is already written, just needs deploying
+- [ ] **Set env vars** — `DASHBOARD_API_KEY` on Django server, `VITE_API_URL` + `VITE_API_KEY` at dashboard build time
 
 ### P1 — Admin Access Control
 
-- [ ] **Add `is_admin` column** to the users database table
-- [ ] **Flag admin users** — set `is_admin = true` for users who should access the dashboard
-- [ ] **Update Admin button in chatbot** — only show to users where `is_admin = true`
-- [ ] **Implement JWT generation** in the chatbot — generate a short-lived signed JWT on Admin button click
-- [ ] **Implement JWT validation** in the dashboard — validate token in middleware before serving content
+- [ ] **Add `user_is_admin` column** to `cwms_users` table:
+  ```sql
+  ALTER TABLE cwms_users ADD COLUMN user_is_admin BIT DEFAULT 0;
+  ```
+- [ ] **Add Django model field** in `analytics/models/user_models.py`:
+  ```python
+  is_admin = models.BooleanField(default=False, db_column="user_is_admin")
+  ```
+- [ ] **Flag admin users** — set `user_is_admin = 1` for users who should access the dashboard
+- [ ] **Update Admin button in chatbot** — only show to users where `is_admin = True`
+- [ ] **Implement JWT generation** — generate a short-lived signed JWT on Admin button click, redirect to `https://<dashboard-url>?token=<JWT>`
+- [ ] **Implement JWT validation** — validate token in dashboard middleware before serving content
 - [ ] **Remove Basic Auth** once JWT is in place
 
-### P2 — Automation
+### P2 — Automation & Quality
 
-- [ ] **Automate log processing** — set up a scheduled job or trigger in the org's CI/CD to run `npm run parse-logs` when new log files arrive, commit the updated Excel, and redeploy
-- [ ] **Automate KB gap detection** — currently KB gaps are manually identified by reviewing bot responses; consider adding a flag in the Ramco log export when the bot returns a "no answer" response
+- [ ] **Retire manual log pipeline** — once Live DB mode is active, `scripts/parseNewLogs.js` and `AskQ_Master_Dashboard.xlsx` are no longer needed
+- [ ] **Auto-detect KB gaps** — the `DashboardDataView` currently sets `Is_KB_Gap = 0` for all rows; add logic to detect "no answer" bot responses (e.g. `message_status_code != 200` or specific response phrases) and set `Is_KB_Gap = 1` automatically
 
 ### Reference
 
@@ -289,7 +340,9 @@ The following items need to be completed as part of integrating this dashboard i
 |---|---|
 | Current deployment | Vercel (temporary) |
 | Production dashboard URL | `https://askme-dashboard-bice.vercel.app` |
+| Django app | `rerp-reporting-app` |
+| New API endpoint | `GET /analytics/dashboard-data` |
+| DB tables used | `cwms_chat_messages`, `cwms_users`, `cwms_bot_message_attributes`, `cwms_human_message_attributes`, `cma_chat_message_feedbacks` |
 | Build command | `npm run build` |
 | Build output | `dist/` |
 | Node version | 20+ |
-| Log parser command | `npm run parse-logs` |
