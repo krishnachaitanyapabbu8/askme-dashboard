@@ -1,101 +1,295 @@
 # AskMe Analytics Dashboard
 
-A single-file analytics dashboard for monitoring AskMe AI assistant performance and usage across Ramco ERP modules.
+An analytics dashboard for monitoring AskMe AI assistant (Jeff) usage and performance across Ramco ERP modules. Built with React + Vite. Data is sourced from production chat logs processed into a master Excel workbook.
 
 ---
 
-## How it works
+## Table of Contents
 
-The dashboard is a single HTML file (`AskMe_Dashboard.html`) that loads an Excel workbook and renders all charts and KPIs in the browser — no server required. All logic (data parsing, filtering, charting) runs client-side using React, Recharts, and SheetJS loaded from CDN.
-
-A GitHub Actions workflow (`process-logs.yml`) automatically processes incoming production log files and updates the master Excel workbook.
-
----
-
-## Project structure
-
-```
-AskMe_Dashboard.html          # The dashboard — open this in a browser
-AskMe_Dashboard_Data.xlsx     # Master data workbook (5 sheets, see below)
-scripts/
-  parseNewLogs.js             # Node.js log parser — run via `npm run parse-logs`
-logs/                         # Drop new production log Excel files here
-logs/completed/               # Processed logs are moved here automatically
-.github/
-  workflows/
-    process-logs.yml          # GitHub Actions: auto-processes logs on push
-```
+1. [What This Is](#what-this-is)
+2. [Current State](#current-state)
+3. [Project Structure](#project-structure)
+4. [Data Pipeline](#data-pipeline)
+5. [Dashboard Pages](#dashboard-pages)
+6. [Running Locally](#running-locally)
+7. [Building for Production](#building-for-production)
+8. [Processing New Logs](#processing-new-logs)
+9. [Excluded Accounts](#excluded-accounts)
+10. [Security — Current vs Required](#security--current-vs-required)
+11. [Developer Tasks](#developer-tasks)
 
 ---
 
-## Excel workbook sheets
+## What This Is
 
-The dashboard reads `AskMe_Dashboard_Data.xlsx` which must contain these five sheets:
+The AskMe Dashboard is a React + Vite web application that visualises how users interact with the AskMe chatbot (Jeff) inside Ramco ERP. It tracks:
 
-| Sheet | Description |
+- Total questions asked per user, module, and month
+- Bot response quality (issues, KB gaps, system errors)
+- Token usage and LLM step breakdown
+- Active users and session trends
+- Month-over-month comparisons
+
+All data is loaded at runtime from a single Excel file (`AskQ_Master_Dashboard.xlsx`) served as a static asset. There is no backend API — everything runs client-side using SheetJS.
+
+---
+
+## Current State
+
+| Area | Status |
 |---|---|
-| `AskQ_Cleaned` | One row per chat message (user + bot) |
-| `AskQ_LLMSteps` | One row per LLM step per bot response |
-| `AskQ_TokenUsage` | Aggregated token counts per bot response |
-| `AskQ_ResponseTime` | Response time in seconds per bot response |
-| `PowerBI_Flat_Table` | Issue flags per bot response |
+| Dashboard UI | Live and working |
+| Data pipeline (log parser) | Working — manual process |
+| Deployment | Temporarily hosted on Vercel (personal account) |
+| Security | Basic Auth (`admin` / `Quad@123`) — **temporary, must be replaced** |
+| Admin button redirect | Points to production Vercel URL |
+| Org repo / CI-CD integration | **Not done — developer action required** |
+| Role-based admin access | **Not done — developer action required** |
 
 ---
 
-## Running the dashboard
+## Project Structure
 
-1. Place `AskMe_Dashboard.html` and `AskMe_Dashboard_Data.xlsx` in the same folder.
-2. Open `AskMe_Dashboard.html` in a browser.
-3. The dashboard auto-loads the Excel file on startup. If it can't find it, use the file picker.
-
-> **Note:** Due to browser security restrictions, open via a local web server (e.g. VS Code Live Server) rather than double-clicking the file directly — `fetch()` is blocked on `file://` in most browsers.
+```
+├── public/
+│   └── AskQ_Master_Dashboard.xlsx   # Master data file — served as static asset
+│
+├── src/
+│   ├── data/
+│   │   └── dataLoader.js            # Loads Excel, computes all metrics and chart data
+│   ├── pages/
+│   │   ├── ExecutiveOverview.jsx
+│   │   ├── IssueAnalysis.jsx
+│   │   ├── UserActivity.jsx
+│   │   ├── BotPerformance.jsx
+│   │   ├── TokenUsage.jsx
+│   │   └── Comparison.jsx
+│   ├── components/
+│   │   ├── KPICard.jsx
+│   │   ├── ChartCard.jsx
+│   │   ├── FilterPanel.jsx
+│   │   ├── DrilldownModal.jsx
+│   │   └── CustomTooltip.jsx
+│   ├── App.jsx
+│   └── main.jsx
+│
+├── scripts/
+│   └── parseNewLogs.js              # Node.js log parser — processes raw Ramco logs
+│
+├── logs/                            # Drop new production log Excel files here
+│   └── completed/                   # Processed logs are moved here automatically
+│
+├── .github/
+│   └── workflows/
+│       └── process-logs.yml         # GitHub Actions: auto-runs parser when log pushed
+│
+├── middleware.js                    # TEMPORARY — Vercel Basic Auth (replace with JWT)
+├── vercel.json                      # Vercel-specific config — not needed outside Vercel
+├── vite.config.js
+└── package.json
+```
 
 ---
 
-## Processing new production logs
+## Data Pipeline
 
-New logs from the dev team arrive as Excel files. To process them:
+### How data flows
 
-**Automatically (GitHub Actions):**
-- Drop the log file into the `logs/` folder and push to `main`.
-- The workflow runs `npm run parse-logs`, appends new rows to the master workbook, and commits the updated file.
+```
+Ramco ERP chat logs (Excel)
+        ↓
+Drop file into logs/ folder
+        ↓
+npm run parse-logs
+        ↓
+Parser reads RawData sheet → transforms → deduplicates
+        ↓
+Appends rows to AskQ_Master_Dashboard.xlsx (5 sheets)
+        ↓
+Commit + push updated Excel
+        ↓
+Redeploy dashboard → data visible in UI
+```
 
-**Manually:**
+### Excel sheets updated by the parser
+
+| Sheet | Description | Dedup Key |
+|---|---|---|
+| `AskQ_Cleaned` | One row per chat message (user + bot) | Session_ID + Sender_Type + Message |
+| `AskQ_LLMSteps` | One row per LLM step per bot response | Session_ID + LLM_Step |
+| `AskQ_TokenUsage` | Aggregated token counts per bot response | Session_ID |
+| `AskQ_ResponseTime` | Response time in seconds per bot response | Session_ID |
+| `PowerBI_Flat_Table` | Issue flags per bot response (KB gaps, errors, etc.) | Session_ID + Bot_Type |
+
+### Issue flags in PowerBI_Flat_Table
+
+| Column | Meaning |
+|---|---|
+| `Is_Issue` | 1 if any issue occurred in this session |
+| `Is_System_Error` | 1 if the SQL/query execution failed (`query_exce_failed_status = true`) |
+| `Is_KB_Gap` | 1 if the bot could not answer — **manually flagged by reviewing bot responses** |
+| `Is_Placeholder_Data` | 1 if bot returned masked/placeholder data |
+| `Is_Copilot_Loop` | 1 if bot went into a response loop |
+| `Is_Context_Drop` | 1 if session context was lost mid-conversation |
+
+> **Note:** `Is_KB_Gap` is not auto-detected. It must be manually identified by reviewing sessions where the bot responded with "information not available" or similar failure messages, then updated in the Excel.
+
+---
+
+## Dashboard Pages
+
+| Page | Description |
+|---|---|
+| Executive Overview | Total questions, active users, feedback, bot distribution, modules |
+| Issue Analysis | KB gaps, errors, issues by month / module / bot type |
+| User Activity | Active users over time, questions per user, module/category breakdown |
+| Bot Performance | Response times, bot type comparison, feedback by bot |
+| Token Usage | Token consumption by month, module, and LLM step |
+| Comparison | Month-over-month changes across all key metrics |
+
+### Filters available
+
+- **Month** — filter all data to one or more months
+- **Bot Type** — filter by NLSQLAgent, Training Bot, etc.
+- **Module** — filter by Ramco ERP module (Accounts Payable, Purchase, etc.)
+- **Question Category** — Data Query, Process/How-To, Transactional, Unclassified
+
+---
+
+## Running Locally
+
 ```bash
 npm install
-# drop log file(s) into logs/
-npm run parse-logs
-# then commit public/AskQ_Master_Dashboard.xlsx
+npm run dev
 ```
 
-The parser:
-- Reads the `RawData` sheet from each log file
-- Appends new rows to all five sheets (deduplicates by session ID)
-- Moves processed files to `logs/completed/`
+Open `http://localhost:5173` in your browser.
 
 ---
 
-## Dashboard pages
+## Building for Production
 
-| Page | What it shows |
+```bash
+npm install
+npm run build
+```
+
+Output is in the `dist/` folder — a fully static site. Serve this folder from any web server (nginx, IIS, Apache, CDN). No server-side runtime is required.
+
+> **Important:** `AskQ_Master_Dashboard.xlsx` is copied into `dist/` automatically during build (it lives in `public/`). Ensure your web server serves it with `Cache-Control: no-cache` so users always get the latest data after a redeploy.
+
+---
+
+## Processing New Logs
+
+Production logs arrive as Excel files from the Ramco system. To process them:
+
+```bash
+# 1. Drop the log file into logs/
+# 2. Run the parser
+npm run parse-logs
+
+# 3. Commit and push the updated Excel
+git add public/AskQ_Master_Dashboard.xlsx
+git commit -m "Add prod logs YYYY-MM-DD"
+git push
+```
+
+The parser will:
+- Read the `RawData` sheet from each log file in `logs/`
+- Skip rows from excluded test accounts (see below)
+- Append new rows to all five sheets in the master Excel (deduplicating existing data)
+- Move processed files to `logs/completed/`
+- Print a summary of rows added per sheet
+
+This can be automated in the org's CI/CD pipeline. A reference GitHub Actions workflow is available at `.github/workflows/process-logs.yml`.
+
+---
+
+## Excluded Accounts
+
+The following user accounts are excluded from both parsing and dashboard display as they are internal test or debug accounts:
+
+| Account | Reason |
 |---|---|
-| Executive Overview | Total questions, users, likes/dislikes, bot distribution, questions by module |
-| Issue Analysis | KB gaps, system errors, masked data, copilot loops by month and bot type |
-| User Activity | Active users, sessions, questions vs sessions trend |
-| Bot Performance | Response times by month and bot type, responses by bot type over time |
-| Token Usage | Total tokens by month, module, and LLM step |
+| `QUADDEBUG` | Internal debug/testing account |
 
-Use **⚙ Manage Pages** in the header to show or hide specific pages — useful for customer presentations. Settings are saved in the browser.
+To add more exclusions, update the `EXCLUDED_USERS` set in:
+- `scripts/parseNewLogs.js` (line ~155) — excludes from future log parsing
+- `src/data/dataLoader.js` (line ~160) — filters from dashboard display
 
 ---
 
-## Dependencies (CDN — no build step needed)
+## Security — Current vs Required
 
-| Library | Version | Purpose |
-|---|---|---|
-| React | 18 | UI rendering |
-| Recharts | 2.10.3 | Charts |
-| SheetJS (xlsx) | 0.18.5 | Excel parsing |
-| Babel Standalone | latest | JSX transpilation in browser |
+### Current (Temporary)
 
-> The dashboard uses Babel Standalone to compile JSX at runtime — this is intentional to avoid a build step. For a production deployment with high traffic, consider pre-compiling with Vite.
+Basic Auth is enforced via `middleware.js` (Vercel Edge Middleware):
+
+- **Username:** `admin`
+- **Password:** `Quad@123`
+- Anyone with these credentials can access the dashboard
+
+This is a **temporary measure** for the initial client demo. It must be replaced before production rollout.
+
+> `middleware.js` is Vercel-specific and will not work on other hosting platforms. Remove it or re-implement Basic Auth at the web server / proxy level if deploying elsewhere.
+
+### Required (Developer to Implement)
+
+The Admin button in the AskMe chatbot should redirect to the dashboard only for authorised users. The recommended approach:
+
+**1. Add `is_admin` column to the users table:**
+```sql
+ALTER TABLE users ADD COLUMN is_admin BOOLEAN DEFAULT FALSE;
+```
+
+**2. Update chatbot logic:**
+- If the logged-in user has `is_admin = true`, show the Admin button
+- On click, generate a short-lived JWT (1 hour expiry) signed with a shared secret
+- Redirect to: `https://<dashboard-url>?token=<JWT>`
+
+**3. Dashboard validates the token:**
+- Edge Middleware (or equivalent) checks the JWT on every request
+- Valid token → allow access, set session cookie, strip token from URL
+- Invalid / expired token → return 401 / redirect to unauthorised page
+
+**Shared secret** must be stored as an environment variable on both the chatbot server and the dashboard host — never hardcoded in code.
+
+---
+
+## Developer Tasks
+
+The following items need to be completed as part of integrating this dashboard into the organisation's systems:
+
+### P0 — Before Go-Live
+
+- [ ] **Migrate to org repo** — move codebase to the organisation's Git repository
+- [ ] **Set up CI/CD** — configure the org's deployment pipeline to run `npm run build` and serve the `dist/` folder
+- [ ] **Remove Vercel-specific files** — `middleware.js` and `vercel.json` are not needed outside Vercel
+- [ ] **Implement Basic Auth at web server level** — until JWT is ready, protect the dashboard with Basic Auth at nginx / IIS / proxy level
+- [ ] **Set `Cache-Control: no-cache` on the Excel file** — ensures users always load fresh data after log updates
+
+### P1 — Admin Access Control
+
+- [ ] **Add `is_admin` column** to the users database table
+- [ ] **Flag admin users** — set `is_admin = true` for users who should access the dashboard
+- [ ] **Update Admin button in chatbot** — only show to users where `is_admin = true`
+- [ ] **Implement JWT generation** in the chatbot — generate a short-lived signed JWT on Admin button click
+- [ ] **Implement JWT validation** in the dashboard — validate token in middleware before serving content
+- [ ] **Remove Basic Auth** once JWT is in place
+
+### P2 — Automation
+
+- [ ] **Automate log processing** — set up a scheduled job or trigger in the org's CI/CD to run `npm run parse-logs` when new log files arrive, commit the updated Excel, and redeploy
+- [ ] **Automate KB gap detection** — currently KB gaps are manually identified by reviewing bot responses; consider adding a flag in the Ramco log export when the bot returns a "no answer" response
+
+### Reference
+
+| Item | Value |
+|---|---|
+| Current deployment | Vercel (temporary) |
+| Production dashboard URL | `https://askme-dashboard-bice.vercel.app` |
+| Build command | `npm run build` |
+| Build output | `dist/` |
+| Node version | 20+ |
+| Log parser command | `npm run parse-logs` |
