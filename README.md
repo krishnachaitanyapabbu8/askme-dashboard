@@ -1,3 +1,4 @@
+
 # AskMe Analytics Dashboard
 
 An analytics dashboard for monitoring AskMe AI assistant (Jeff) usage and performance across Ramco ERP modules. Built with React + Vite. Data is sourced from production chat logs processed into a master Excel workbook.
@@ -257,47 +258,199 @@ ALTER TABLE users ADD COLUMN is_admin BOOLEAN DEFAULT FALSE;
 
 ---
 
-## Live DB Integration (replacing Excel)
+## Target Architecture — Live DB with Persistent Analytics Tables
 
-The dashboard supports two data modes:
+The Excel-based pipeline is a temporary solution. The proper long-term architecture stores parsed analytics data in dedicated DB tables and serves it via a REST API. This eliminates the manual log processing workflow entirely.
 
-### Mode 1 — Excel (current, temporary)
-Dashboard loads `AskQ_Master_Dashboard.xlsx` at runtime. Requires manual log processing.
+### Three-phase data flow
 
-### Mode 2 — Live API (target)
-Dashboard fetches data directly from `rerp-reporting-app` via a REST API. No Excel, no manual steps — always live data.
+```
+PHASE 1 — Current (temporary)
+─────────────────────────────
+Ramco logs Excel
+    → parseNewLogs.js (manual)
+    → AskQ_Master_Dashboard.xlsx
+    → Dashboard reads Excel
 
-**What's already built:**
+PHASE 2 — Intermediate (API without persistent tables)
+───────────────────────────────────────────────────────
+cwms_chat_messages (production DB)
+    → GET /analytics/dashboard-data (Django API)
+    → dashboard_builder.py processes ALL messages on every request
+    → Dashboard reads from API
+    ⚠ Slow at scale — reprocesses everything on every page load
 
-| File | What it does |
-|---|---|
-| `rerp-reporting-app/analytics/utils/dashboard_builder.py` | Python port of the log parser — transforms raw DB messages into dashboard-ready data |
-| `rerp-reporting-app/analytics/views/analytics_views.py` | `DashboardDataView` — new endpoint `GET /analytics/dashboard-data` |
-| `rerp-reporting-app/analytics/urls.py` | Route registered |
-| `src/data/dataLoader.js` | Updated to call API when `VITE_API_URL` is set, falls back to Excel otherwise |
-| `.env.example` | Environment variable reference |
+PHASE 3 — Target (persistent analytics tables)
+───────────────────────────────────────────────
+cwms_chat_messages (production DB)
+    → Scheduled Django job (daily/hourly) processes only NEW messages
+    → Saves processed data to dedicated analytics tables
+    → GET /analytics/dashboard-data reads from analytics tables (fast)
+    → Dashboard reads from API
+    ✅ Fast, live, no manual steps, scalable
+```
 
-**To activate live DB mode:**
+---
 
-1. Deploy `rerp-reporting-app` with the new endpoint
-2. Set `DASHBOARD_API_KEY` env var on the Django server
-3. Set these env vars when building the dashboard:
-   ```
-   VITE_API_URL=https://your-django-app.com
-   VITE_API_KEY=your-secret-api-key
-   ```
-4. Run `npm run build` — the dashboard will now fetch live data
+### Analytics tables to create (Phase 3)
 
-**API endpoint:**
+These mirror the 5 Excel sheets but as proper DB tables, populated incrementally by a scheduled job:
+
+```sql
+-- Equivalent of AskQ_Cleaned
+CREATE TABLE analytics_cleaned (
+    id              BIGINT PRIMARY KEY IDENTITY,
+    session_id      VARCHAR(36) NOT NULL,
+    date            DATE,
+    month           VARCHAR(10),           -- e.g. 'Jun-2026'
+    sender_type     VARCHAR(10),           -- 'Human' or 'bot'
+    user_name       VARCHAR(512),
+    bot_type        VARCHAR(50),
+    message         NVARCHAR(MAX),
+    question_category VARCHAR(50),
+    feedback        VARCHAR(10),           -- 'LIKE', 'DISLIKE', or NULL
+    is_user_question BIT DEFAULT 0,
+    is_system_error  BIT DEFAULT 0,
+    is_issue         BIT DEFAULT 0,
+    source_date     DATE                   -- date this row was processed
+);
+
+-- Equivalent of PowerBI_Flat_Table
+CREATE TABLE analytics_flat_table (
+    id              BIGINT PRIMARY KEY IDENTITY,
+    session_id      VARCHAR(36) NOT NULL,
+    month           VARCHAR(10),
+    module          VARCHAR(255),
+    bot_type        VARCHAR(50),
+    is_issue        BIT DEFAULT 0,
+    is_system_error BIT DEFAULT 0,
+    is_kb_gap       BIT DEFAULT 0,        -- set automatically (see below)
+    is_placeholder  BIT DEFAULT 0,
+    is_copilot_loop BIT DEFAULT 0,
+    is_context_drop BIT DEFAULT 0,
+    source_date     DATE
+);
+
+-- Equivalent of AskQ_TokenUsage
+CREATE TABLE analytics_token_usage (
+    id              BIGINT PRIMARY KEY IDENTITY,
+    session_id      VARCHAR(36) NOT NULL,
+    month           VARCHAR(10),
+    module          VARCHAR(255),
+    bot_type        VARCHAR(50),
+    prompt_tokens   INT DEFAULT 0,
+    completion_tokens INT DEFAULT 0,
+    total_tokens    INT DEFAULT 0,
+    source_date     DATE
+);
+
+-- Equivalent of AskQ_LLMSteps
+CREATE TABLE analytics_llm_steps (
+    id              BIGINT PRIMARY KEY IDENTITY,
+    session_id      VARCHAR(36) NOT NULL,
+    month           VARCHAR(10),
+    module          VARCHAR(255),
+    bot_type        VARCHAR(50),
+    llm_step        VARCHAR(100),
+    prompt_tokens   INT DEFAULT 0,
+    completion_tokens INT DEFAULT 0,
+    total_tokens    INT DEFAULT 0,
+    source_date     DATE
+);
+
+-- Equivalent of AskQ_ResponseTime
+CREATE TABLE analytics_response_times (
+    id              BIGINT PRIMARY KEY IDENTITY,
+    session_id      VARCHAR(36) NOT NULL,
+    month           VARCHAR(10),
+    bot_type        VARCHAR(50),
+    response_time_seconds DECIMAL(8,1),
+    source_date     DATE
+);
+```
+
+---
+
+### Scheduled processing job
+
+A Django management command (or Celery task) runs daily/hourly and processes only new messages since the last run:
+
+```python
+# analytics/management/commands/process_analytics.py
+
+class Command(BaseCommand):
+    def handle(self, *args, **kwargs):
+        last_processed = AnalyticsCheckpoint.get_last_date()  # track what's been processed
+        new_messages = ChatMessage.objects.filter(
+            chat_message_created_at__gt=last_processed
+        ).select_related(...)
+
+        rows = [format_chat_message(m) for m in new_messages]
+        data = build_dashboard_data(rows)   # reuse existing dashboard_builder.py
+
+        # Save to analytics tables (bulk insert, deduplicate by session_id)
+        AnalyticsCleaned.objects.bulk_create(data['cleaned'], ignore_conflicts=True)
+        AnalyticsFlatTable.objects.bulk_create(data['flat_table'], ignore_conflicts=True)
+        # ... same for token_usage, llm_steps, response_times
+
+        AnalyticsCheckpoint.update(timezone.now())
+```
+
+---
+
+### Auto-detecting KB Gaps
+
+The `Is_KB_Gap` flag should be set automatically — not manually. Detection logic using existing DB fields:
+
+```python
+# In dashboard_builder.py — auto-detect KB gaps from bot message attributes
+def is_kb_gap(bot_message_attribute):
+    # Method 1: message_status_code indicates failure
+    if bot_message_attribute.message_status_code != 200:
+        return True
+    # Method 2: response text contains known failure phrases
+    text = (bot_message_attribute.response_text or '').lower()
+    failure_phrases = [
+        "information isn't available",
+        "looks like that information",
+        "i don't have",
+        "unable to find",
+        "no specific steps provided",
+    ]
+    return any(phrase in text for phrase in failure_phrases)
+```
+
+---
+
+### Updated API endpoint (Phase 3)
+
+Once analytics tables exist, the API reads from them instead of reprocessing raw messages:
+
+```python
+# Much faster — reads pre-computed analytics tables
+class DashboardDataView(APIView):
+    def get(self, request):
+        cleaned    = AnalyticsCleaned.objects.all().values()
+        flat_table = AnalyticsFlatTable.objects.all().values()
+        token_usage = AnalyticsTokenUsage.objects.all().values()
+        # ... return as JSON
+```
+
+**To activate:**
+
+1. Create analytics tables (SQL above)
+2. Run the processing job once to backfill historical data
+3. Schedule it to run daily (cron / Celery beat)
+4. Update `DashboardDataView` to read from analytics tables
+5. Set `VITE_API_URL` in dashboard build
+
+**API endpoint (already built, no changes needed on dashboard side):**
 ```
 GET /analytics/dashboard-data
 Headers: X-Api-Key: <DASHBOARD_API_KEY>
-Query params (optional):
-  from_date=YYYY-MM-DD
-  to_date=YYYY-MM-DD
 ```
 
-**CORS:** The Django app must allow requests from the dashboard domain. Add the dashboard URL to `CORS_ALLOWED_ORIGINS` in Django settings (requires `django-cors-headers`).
+**CORS:** Add dashboard URL to `CORS_ALLOWED_ORIGINS` in Django settings (requires `django-cors-headers`).
 
 ---
 
@@ -329,10 +482,18 @@ Query params (optional):
 - [ ] **Implement JWT validation** — validate token in dashboard middleware before serving content
 - [ ] **Remove Basic Auth** once JWT is in place
 
-### P2 — Automation & Quality
+### P2 — Persistent Analytics Tables (Target Architecture)
 
-- [ ] **Retire manual log pipeline** — once Live DB mode is active, `scripts/parseNewLogs.js` and `AskQ_Master_Dashboard.xlsx` are no longer needed
-- [ ] **Auto-detect KB gaps** — the `DashboardDataView` currently sets `Is_KB_Gap = 0` for all rows; add logic to detect "no answer" bot responses (e.g. `message_status_code != 200` or specific response phrases) and set `Is_KB_Gap = 1` automatically
+This is the most important long-term task. Replaces both the Excel pipeline and the slow on-the-fly API.
+
+- [ ] **Create 5 analytics tables** in the production DB — `analytics_cleaned`, `analytics_flat_table`, `analytics_token_usage`, `analytics_llm_steps`, `analytics_response_times` (SQL schema in [Target Architecture](#target-architecture--live-db-with-persistent-analytics-tables) section above)
+- [ ] **Create Django models** for each analytics table (`managed = True` so migrations work)
+- [ ] **Build processing management command** — `process_analytics.py` that uses `dashboard_builder.py` to process new messages and bulk-insert into analytics tables. Tracks last-processed timestamp via a checkpoint table.
+- [ ] **Backfill historical data** — run the command once to populate analytics tables from all existing `cwms_chat_messages`
+- [ ] **Schedule the job** — run daily (or hourly) via cron / Celery beat / Azure DevOps scheduled pipeline
+- [ ] **Update `DashboardDataView`** to read from analytics tables instead of processing raw `cwms_chat_messages` on every request
+- [ ] **Auto-detect KB gaps** — in `dashboard_builder.py`, set `Is_KB_Gap = 1` automatically using `message_status_code` or known failure phrases in bot response text (see detection logic in Target Architecture section)
+- [ ] **Retire manual log pipeline** — once analytics tables are live, `scripts/parseNewLogs.js` and `AskQ_Master_Dashboard.xlsx` are no longer needed
 
 ### Reference
 
