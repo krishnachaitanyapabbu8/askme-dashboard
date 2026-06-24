@@ -1140,11 +1140,11 @@ body {
 }
 
 .conv-message.conv-user {
-  align-self: flex-start;
+  align-self: flex-end;
 }
 
 .conv-message.conv-bot {
-  align-self: flex-end;
+  align-self: flex-start;
 }
 
 .conv-sender {
@@ -1155,7 +1155,7 @@ body {
   letter-spacing: 0.5px;
 }
 
-.conv-message.conv-bot .conv-sender {
+.conv-message.conv-user .conv-sender {
   text-align: right;
 }
 
@@ -1170,14 +1170,14 @@ body {
 .conv-message.conv-user .conv-text {
   background: #EEF2FF;
   color: #1E3A8A;
-  border-bottom-left-radius: 2px;
+  border-bottom-right-radius: 2px;
+  text-align: right;
 }
 
 .conv-message.conv-bot .conv-text {
   background: #F1F5F9;
   color: #334155;
-  border-bottom-right-radius: 2px;
-  text-align: right;
+  border-bottom-left-radius: 2px;
 }
 
 /* ── Recharts overrides ───────────────────────────────────────────────── */
