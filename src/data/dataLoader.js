@@ -722,8 +722,16 @@ export async function loadDashboardData(filters = {}) {
 
   // ── Last updated date ────────────────────────────────────────────────────
   const lastUpdated = (() => {
-    const dates = fc.map(r => r.Date).filter(Boolean).sort();
-    return dates[dates.length - 1] ?? null;
+    // Dates are DD-MM-YYYY — convert to YYYY-MM-DD for correct sorting
+    const dates = fc.map(r => r.Date).filter(Boolean).map(d => {
+      const m = String(d).match(/^(\d{1,2})-(\d{1,2})-(\d{4})$/);
+      return m ? `${m[3]}-${m[2].padStart(2,'0')}-${m[1].padStart(2,'0')}` : null;
+    }).filter(Boolean).sort();
+    if (!dates.length) return null;
+    // Convert the max date back to DD-MM-YYYY for display
+    const iso = dates[dates.length - 1];
+    const [y, mo, dd] = iso.split('-');
+    return `${dd}-${mo}-${y}`;
   })();
 
   // ── Page insights (auto-generated key takeaway per page) ─────────────────
