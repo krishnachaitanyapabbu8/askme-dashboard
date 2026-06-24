@@ -157,7 +157,7 @@ const labelStep = (step) => LLM_STEP_LABELS[step] || step;
 export async function loadDashboardData(filters = {}) {
   const wb = await fetchWorkbook(MASTER_PATH);
 
-  const EXCLUDED_USERS = new Set(['QUADDEBUG', 'Q GenAI Bot']);
+  const EXCLUDED_USERS = new Set(['QUADDEBUG']);
 
   const allCleaned   = getSheet(wb, 'AskQ_Cleaned');
   const excludedSessions = new Set(
