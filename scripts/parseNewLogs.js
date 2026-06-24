@@ -268,7 +268,7 @@ function transformRawData(rows, sourceFile) {
       const prevIsUser = String(prevRow.chat_message_sender_type ?? '').toLowerCase() !== 'bot';
       if (prevIsUser) {
         const t0 = parseTimestamp(prevRow.chat_message_created_at);
-        const t1 = parseTimestamp(dateStr);
+        const t1 = parseTimestamp(rawDate); // use raw timestamp, not formatted date string
         if (!isNaN(t0) && !isNaN(t1) && t1 > t0) {
           const diffSec = +((t1 - t0) / 1000).toFixed(1);
           if (diffSec < 300) {
