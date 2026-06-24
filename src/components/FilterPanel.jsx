@@ -4,7 +4,6 @@ function MultiSelectDropdown({ label, options, selected, onChange, partialItems 
   const [open, setOpen] = useState(false);
   const ref = useRef(null);
 
-  // Close when clicking outside
   useEffect(() => {
     const handler = (e) => { if (ref.current && !ref.current.contains(e.target)) setOpen(false); };
     document.addEventListener('mousedown', handler);
@@ -15,8 +14,8 @@ function MultiSelectDropdown({ label, options, selected, onChange, partialItems 
     onChange(selected.includes(val) ? selected.filter(v => v !== val) : [...selected, val]);
   };
 
-  const clearAll    = (e) => { e.stopPropagation(); onChange([]); };
-  const selectAll   = (e) => { e.stopPropagation(); onChange([...options]); };
+  const clearAll  = (e) => { e.stopPropagation(); onChange([]); };
+  const selectAll = (e) => { e.stopPropagation(); onChange([...options]); };
   const allSelected = selected.length === 0;
 
   const buttonLabel = allSelected
@@ -50,9 +49,7 @@ function MultiSelectDropdown({ label, options, selected, onChange, partialItems 
                   checked={selected.includes(opt)}
                   onChange={() => toggle(opt)}
                 />
-                <span>
-                  {opt}{partialItems.has(opt) ? ' *' : ''}
-                </span>
+                <span>{opt}{partialItems.has(opt) ? ' *' : ''}</span>
               </label>
             ))}
           </div>
@@ -70,6 +67,18 @@ export default function FilterPanel({ filterOptions, filters, onFilterChange }) 
   const months = filterOptions.months ?? [];
   const partialMonths = new Set(months.length ? [months[months.length - 1]] : []);
 
+  // Build active filter tags: { label, value, key }
+  const activeTags = [
+    ...filters.months.map(v           => ({ key: 'months',             value: v, label: v })),
+    ...filters.botTypes.map(v         => ({ key: 'botTypes',           value: v, label: v })),
+    ...filters.modules.map(v          => ({ key: 'modules',            value: v, label: v })),
+    ...filters.questionCategories.map(v => ({ key: 'questionCategories', value: v, label: v })),
+  ];
+
+  const removeTag = ({ key, value }) => {
+    onFilterChange({ ...filters, [key]: filters[key].filter(v => v !== value) });
+  };
+
   return (
     <aside className="filter-panel">
       <div className="filter-panel-header">
@@ -81,6 +90,18 @@ export default function FilterPanel({ filterOptions, filters, onFilterChange }) 
           Reset all
         </button>
       </div>
+
+      {/* Active filter tags */}
+      {activeTags.length > 0 && (
+        <div className="active-filter-tags">
+          {activeTags.map((tag, i) => (
+            <span key={i} className="active-filter-tag">
+              {tag.label}
+              <button className="active-filter-tag-remove" onClick={() => removeTag(tag)}>✕</button>
+            </span>
+          ))}
+        </div>
+      )}
 
       <MultiSelectDropdown
         label="Month"
