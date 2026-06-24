@@ -524,6 +524,28 @@ export async function loadDashboardData(filters = {}) {
     };
   });
 
+  // Issue questions table — user questions from sessions flagged as Is_Issue = 1
+  const issueSessions = new Set(ft.filter(r => toInt(r.Is_Issue) === 1).map(r => r.Session_ID));
+  const issueRows = userQuestions
+    .filter(r => issueSessions.has(r.Session_ID))
+    .map(r => {
+      const sessionFt = ft.filter(f => f.Session_ID === r.Session_ID);
+      const isSystemError = sessionFt.some(f => toInt(f.Is_System_Error) === 1);
+      const isKbGap       = sessionFt.some(f => toInt(f.Is_KB_Gap) === 1);
+      const issueType     = isSystemError ? 'System Error'
+                          : isKbGap       ? "Training Bot Couldn't Answer"
+                          :                 'Issue';
+      return {
+        date:      r.Date,
+        month:     r.Month,
+        user:      r.User_Display ?? '',
+        module:    sessionToModule[r.Session_ID] ?? '',
+        question:  r.Message ?? '',
+        issueType,
+      };
+    })
+    .sort((a, b) => a.date > b.date ? -1 : 1);
+
   // KB Gaps by Module — which modules have the most training gaps
   const kbGapsByModule = (() => {
     const byMod = groupBy(ft, 'Module');
@@ -736,6 +758,7 @@ export async function loadDashboardData(filters = {}) {
       // Issue Analysis extras
       issueRateByMonth,
       kbGapsByModule,
+      issueRows,
       // User drilldown — all filtered question rows (modal reads these)
       drilldownRows: userQuestions.map(r => ({
         user:     r.User_Display ?? '',

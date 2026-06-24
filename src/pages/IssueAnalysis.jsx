@@ -107,7 +107,7 @@ export default function IssueAnalysis({ data }) {
         </ChartCard>
       </div>
 
-      {/* Row 3: Issue Rate Trend | Unanswered Questions by Module */}
+      {/* Row 3: Issue Rate Trend | Questions Training Bot Couldn't Answer by Module */}
       <div className="chart-row">
         <ChartCard title="Issue Rate Trend (% of Bot Responses)" minHeight={300}>
           <ResponsiveContainer width="100%" height={260}>
@@ -143,6 +143,48 @@ export default function IssueAnalysis({ data }) {
             );
           }}
         </ChartCard>
+      </div>
+
+      {/* Questions with Issues Table */}
+      <div style={{ marginTop: 24 }}>
+        <h3 style={{ fontSize: 14, fontWeight: 600, color: '#1E293B', marginBottom: 12 }}>
+          Questions with Issues ({c.issueRows.length})
+        </h3>
+        {c.issueRows.length === 0 ? (
+          <p style={{ fontSize: 13, color: '#94A3B8' }}>No issues found for the selected filters.</p>
+        ) : (
+          <div style={{ overflowX: 'auto' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
+              <thead>
+                <tr style={{ background: '#F1F5F9' }}>
+                  {['Date', 'User', 'Module', 'Issue Type', 'Question'].map(col => (
+                    <th key={col} style={{
+                      padding: '8px 12px', textAlign: 'left', fontWeight: 600,
+                      color: '#475569', borderBottom: '1px solid #E2E8F0', whiteSpace: 'nowrap'
+                    }}>{col}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {c.issueRows.map((row, i) => (
+                  <tr key={i} style={{ borderBottom: '1px solid #F1F5F9', background: i % 2 === 0 ? '#fff' : '#FAFAFA' }}>
+                    <td style={{ padding: '8px 12px', whiteSpace: 'nowrap', color: '#64748B' }}>{row.date}</td>
+                    <td style={{ padding: '8px 12px', whiteSpace: 'nowrap', color: '#334155' }}>{row.user || '—'}</td>
+                    <td style={{ padding: '8px 12px', whiteSpace: 'nowrap', color: '#334155' }}>{row.module || '—'}</td>
+                    <td style={{ padding: '8px 12px', whiteSpace: 'nowrap' }}>
+                      <span style={{
+                        padding: '2px 8px', borderRadius: 12, fontSize: 11, fontWeight: 500,
+                        background: row.issueType === 'System Error' ? '#FEE2E2' : row.issueType === "Training Bot Couldn't Answer" ? '#DBEAFE' : '#FEF9C3',
+                        color:      row.issueType === 'System Error' ? '#DC2626' : row.issueType === "Training Bot Couldn't Answer" ? '#1D4ED8' : '#854D0E',
+                      }}>{row.issueType}</span>
+                    </td>
+                    <td style={{ padding: '8px 12px', color: '#334155', maxWidth: 500 }}>{row.question}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
     </div>
   );
