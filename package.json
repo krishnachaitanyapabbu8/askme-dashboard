@@ -9,7 +9,8 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "parse-logs": "node scripts/parseNewLogs.js"
+    "parse-logs": "node scripts/parseNewLogs.js",
+    "detect-kb-gaps": "node scripts/detectKbGaps.js"
   },
   "dependencies": {
     "react": "^18.2.0",

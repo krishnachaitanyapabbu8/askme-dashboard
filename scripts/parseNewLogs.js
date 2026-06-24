@@ -154,6 +154,25 @@ function classifyQuestion(message) {
 
 const EXCLUDED_USERS = new Set(['QUADDEBUG', 'RAMCOUSER']);
 
+// ── KB Gap auto-detection ──────────────────────────────────────────────────────
+// Bot phrases that indicate a training/knowledge base gap.
+// Add new phrases here as discovered from log reviews.
+
+const KB_GAP_PHRASES = [
+  "looks like that information isn't available",
+  "information isn't available at the moment",
+  "no specific steps provided",
+  "information is insufficient to retrieve",
+  "information provided is insufficient",
+  "provided information is insufficient",
+];
+
+function detectKbGap(botMessageText) {
+  if (!botMessageText) return false;
+  const lower = String(botMessageText).toLowerCase();
+  return KB_GAP_PHRASES.some(phrase => lower.includes(phrase));
+}
+
 // ── Row transformer ────────────────────────────────────────────────────────────
 
 function transformRawData(rows, sourceFile) {
@@ -286,7 +305,7 @@ function transformRawData(rows, sourceFile) {
 
     // ── PowerBI_Flat_Table ─────────────────────────────────────────────────────
     // Is_Issue = 1 whenever any issue sub-flag is set
-    const isKbGap           = 0; // manually flagged via log review
+    const isKbGap           = detectKbGap(message) ? 1 : 0; // auto-detected from this bot response text
     const isPlaceholderData = 0; // manually flagged via log review
     const isCopilotLoop     = 0; // manually flagged via log review
     const isContextDrop     = 0; // manually flagged via log review
