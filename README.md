@@ -1,4 +1,4 @@
-
+﻿
 # AskMe Analytics Dashboard
 
 An analytics dashboard for monitoring AskMe AI assistant (Jeff) usage and performance across Ramco ERP modules. Built with React + Vite. Data is sourced from production chat logs processed into a master Excel workbook.
