@@ -24,9 +24,65 @@ import { createRequire } from 'module';
 import { readdirSync, existsSync, renameSync, unlinkSync } from 'fs';
 import { join, extname, resolve, dirname } from 'path';
 import { fileURLToPath } from 'url';
+import { createClient } from '@supabase/supabase-js';
+import { config } from 'dotenv';
+
+config({ path: join(dirname(fileURLToPath(import.meta.url)), '..', '.env') });
 
 const require   = createRequire(import.meta.url);
 const XLSX      = require('xlsx');
+
+// ── Supabase client (for pushing parsed data to DB) ───────────────────────────
+const SUPABASE_URL = process.env.VITE_SUPABASE_URL;
+const SUPABASE_KEY = process.env.VITE_SUPABASE_ANON_KEY;
+const supabase     = SUPABASE_URL && SUPABASE_KEY ? createClient(SUPABASE_URL, SUPABASE_KEY) : null;
+
+async function pushToSupabase(cleaned, llmSteps, tokenUsage, responseTimes, flatTable) {
+  if (!supabase) { console.log('    ⚠ Supabase not configured — skipping DB push'); return; }
+
+  const upsert = async (table, rows, onConflict) => {
+    if (!rows.length) return 0;
+    const { error, data } = await supabase.from(table).upsert(rows, { onConflict, ignoreDuplicates: true });
+    if (error) { console.error(`    ✗ Supabase ${table}: ${error.message}`); return 0; }
+    return rows.length;
+  };
+
+  const c = await upsert('analytics_cleaned', cleaned.map(r => ({
+    session_id: r.Session_ID, date: r.Date, month: r.Month, sender_type: r.Sender_Type,
+    user_name: r.User_Name, user_display: r.User_Display, bot_type: r.Bot_Type,
+    message: r.Message, question_category: r.Question_Category, feedback: r.Feedback,
+    is_user_question: r.Is_User_Question_Flag, is_system_error: r.Is_System_Error,
+    is_issue: r.Is_Issue, source_file: r.Source_File,
+  })), 'session_id,sender_type,message');
+
+  const f = await upsert('analytics_flat_table', flatTable.map(r => ({
+    session_id: r.Session_ID, month: r.Month, module: r.Module, bot_type: r.Bot_Type,
+    is_issue: r.Is_Issue, is_system_error: r.Is_System_Error, is_kb_gap: r.Is_KB_Gap,
+    is_placeholder_data: r.Is_Placeholder_Data, is_copilot_loop: r.Is_Copilot_Loop,
+    is_context_drop: r.Is_Context_Drop, source_file: r.Source_File,
+  })), 'session_id,bot_type');
+
+  const t = await upsert('analytics_token_usage', tokenUsage.map(r => ({
+    session_id: r.Session_ID, month: r.Month, module_clean: r.Module_Clean,
+    bot_type: r.Bot_Type, prompt_tokens: r.Prompt_Tokens,
+    completion_tokens: r.Completion_Tokens, total_tokens: r.Total_Tokens,
+    source_file: r.Source_File,
+  })), 'session_id');
+
+  const l = await upsert('analytics_llm_steps', llmSteps.map(r => ({
+    session_id: r.Session_ID, month: r.Month, module: r.Module, bot_type: r.Bot_Type,
+    llm_step: r.LLM_Step, prompt_tokens: r.Prompt_Tokens,
+    completion_tokens: r.Completion_Tokens, total_tokens: r.Total_Tokens,
+    source_file: r.Source_File,
+  })), 'session_id,llm_step');
+
+  const rt = await upsert('analytics_response_times', responseTimes.map(r => ({
+    session_id: r.Session_ID, month: r.Month, bot_type: r.Bot_Type,
+    response_time_seconds: r.Response_Time_Seconds, source_file: r.Source_File,
+  })), 'session_id');
+
+  console.log(`    → Supabase: +${c} cleaned, +${f} flat_table, +${t} tokens, +${l} llm_steps, +${rt} response_times`);
+}
 
 const __dirname       = dirname(fileURLToPath(import.meta.url));
 const ROOT            = resolve(__dirname, '..');
@@ -425,6 +481,9 @@ for (const file of logFiles) {
     console.log(`    → ${sheet}: ${added > 0 ? `+${added} new rows` : 'nothing new'}`);
     totalAdded += added;
   }
+
+  // Push parsed data to Supabase DB
+  await pushToSupabase(cleaned, llmSteps, tokenUsage, responseTimes, flatTable);
 
   const dest = join(COMPLETED_FOLDER, file);
   if (existsSync(dest)) unlinkSync(dest);

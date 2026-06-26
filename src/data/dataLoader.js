@@ -1,16 +1,72 @@
 import * as XLSX from 'xlsx';
+import { supabase } from './supabaseClient';
 
-// ─── Data source configuration ────────────────────────────────────────────────
-//
-// Set VITE_API_URL in your .env file to switch to live DB mode:
-//   VITE_API_URL=https://your-django-app.com
-//   VITE_API_KEY=your-secret-key
-//
-// Leave VITE_API_URL unset to fall back to the local Excel file.
+// ─── Data source priority ─────────────────────────────────────────────────────
+// 1. Supabase DB (if VITE_SUPABASE_URL set)  ← active now
+// 2. Django API (if VITE_API_URL set)
+// 3. Excel fallback (always works)
 
 const API_BASE  = import.meta.env.VITE_API_URL  || '';
 const API_KEY   = import.meta.env.VITE_API_KEY   || '';
 const MASTER_PATH = `./AskQ_Master_Dashboard.xlsx?v=${Date.now()}`;
+
+// ─── Supabase loader ──────────────────────────────────────────────────────────
+
+async function fetchAllRows(table) {
+  let allRows = [];
+  let from = 0;
+  const pageSize = 1000;
+  while (true) {
+    const { data, error } = await supabase
+      .from(table)
+      .select('*')
+      .range(from, from + pageSize - 1);
+    if (error) throw new Error(`Supabase error on ${table}: ${error.message}`);
+    allRows = allRows.concat(data || []);
+    if (!data || data.length < pageSize) break;
+    from += pageSize;
+  }
+  return allRows;
+}
+
+async function fetchFromSupabase() {
+  const [cleaned, flatTable, tokenUsage, llmSteps, responseTimes] = await Promise.all([
+    fetchAllRows('analytics_cleaned'),
+    fetchAllRows('analytics_flat_table'),
+    fetchAllRows('analytics_token_usage'),
+    fetchAllRows('analytics_llm_steps'),
+    fetchAllRows('analytics_response_times'),
+  ]);
+  return {
+    cleaned:        cleaned.map(r => ({
+      Date: r.date, Month: r.month, Session_ID: r.session_id,
+      Sender_Type: r.sender_type, User_Name: r.user_name, User_Display: r.user_display,
+      Bot_Type: r.bot_type, Message: r.message, Question_Category: r.question_category,
+      Feedback: r.feedback, Is_User_Question_Flag: r.is_user_question,
+      Is_System_Error: r.is_system_error, Is_Issue: r.is_issue,
+    })),
+    flat_table:     flatTable.map(r => ({
+      Session_ID: r.session_id, Month: r.month, Module: r.module, Bot_Type: r.bot_type,
+      Is_Issue: r.is_issue, Is_System_Error: r.is_system_error, Is_KB_Gap: r.is_kb_gap,
+      Is_Placeholder_Data: r.is_placeholder_data, Is_Copilot_Loop: r.is_copilot_loop,
+      Is_Context_Drop: r.is_context_drop,
+    })),
+    token_usage:    tokenUsage.map(r => ({
+      Session_ID: r.session_id, Month: r.month, Module_Clean: r.module_clean,
+      Bot_Type: r.bot_type, Prompt_Tokens: r.prompt_tokens,
+      Completion_Tokens: r.completion_tokens, Total_Tokens: r.total_tokens,
+    })),
+    llm_steps:      llmSteps.map(r => ({
+      Session_ID: r.session_id, Month: r.month, Module: r.module, Bot_Type: r.bot_type,
+      LLM_Step: r.llm_step, Prompt_Tokens: r.prompt_tokens,
+      Completion_Tokens: r.completion_tokens, Total_Tokens: r.total_tokens,
+    })),
+    response_times: responseTimes.map(r => ({
+      Session_ID: r.session_id, Month: r.month, Bot_Type: r.bot_type,
+      Response_Time_Seconds: r.response_time_seconds,
+    })),
+  };
+}
 
 // ─── API loader ───────────────────────────────────────────────────────────────
 
@@ -181,8 +237,16 @@ const labelStep = (step) => LLM_STEP_LABELS[step] || step;
 export async function loadDashboardData(filters = {}) {
   let cleaned, responseTime, tokenUsage, llmSteps, flatTable;
 
-  if (API_BASE) {
-    // ── Live DB mode — fetch from Django API ──────────────────────────────
+  if (supabase) {
+    // ── Mode 1: Supabase DB ───────────────────────────────────────────────
+    const data = await fetchFromSupabase();
+    cleaned      = data.cleaned.map(r       => ({ ...r, Month: normalizeMonth(r.Month) }));
+    responseTime = data.response_times.map(r => ({ ...r, Month: normalizeMonth(r.Month) }));
+    tokenUsage   = data.token_usage.map(r    => ({ ...r, Month: normalizeMonth(r.Month) }));
+    llmSteps     = data.llm_steps.map(r      => ({ ...r, Month: normalizeMonth(r.Month) }));
+    flatTable    = data.flat_table.map(r     => ({ ...r, Month: normalizeMonth(r.Month) }));
+  } else if (API_BASE) {
+    // ── Mode 2: Django API ────────────────────────────────────────────────
     const data = await fetchFromAPI();
     cleaned      = (data.cleaned       || []).map(r => ({ ...r, Month: normalizeMonth(r.Month) }));
     responseTime = (data.response_times || []).map(r => ({ ...r, Month: normalizeMonth(r.Month) }));

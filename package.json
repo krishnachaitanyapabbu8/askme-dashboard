@@ -10,9 +10,12 @@
     "build": "vite build",
     "preview": "vite preview",
     "parse-logs": "node scripts/parseNewLogs.js",
-    "detect-kb-gaps": "node scripts/detectKbGaps.js"
+    "detect-kb-gaps": "node scripts/detectKbGaps.js",
+    "migrate-to-supabase": "node scripts/migrateToSupabase.js"
   },
   "dependencies": {
+    "@supabase/supabase-js": "^2.108.2",
+    "dotenv": "^17.4.2",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "recharts": "^2.10.3",
