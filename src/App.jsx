@@ -87,13 +87,7 @@ export default function App() {
     <div className="app-shell">
       {/* Header */}
       <header className="app-header">
-        <div className="header-brand">
-          <span className="header-logo">MJB</span>
-          <div className="header-title-group">
-            <h1>AskMe Analytics</h1>
-            <span className="header-sub">Powered by Quadratyx</span>
-          </div>
-        </div>
+        <h1>AskMe Analytics Dashboard</h1>
         {data?.lastUpdated && (
           <span className="header-last-updated">
             Last updated: {data.lastUpdated}

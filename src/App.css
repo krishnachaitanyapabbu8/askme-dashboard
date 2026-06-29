@@ -40,41 +40,10 @@ body {
   z-index: 10;
 }
 
-.header-brand {
-  display: flex;
-  align-items: center;
-  gap: 14px;
-}
-
-.header-logo {
-  background: rgba(255,255,255,0.15);
-  border: 1.5px solid rgba(255,255,255,0.3);
-  border-radius: 8px;
-  padding: 4px 10px;
-  font-size: 13px;
-  font-weight: 800;
-  letter-spacing: 1px;
-  color: #fff;
-}
-
-.header-title-group {
-  display: flex;
-  flex-direction: column;
-  gap: 1px;
-}
-
 .app-header h1 {
-  font-size: 16px;
+  font-size: 17px;
   font-weight: 700;
-  letter-spacing: -0.3px;
-  line-height: 1.2;
-}
-
-.header-sub {
-  font-size: 10px;
-  opacity: 0.55;
-  font-weight: 400;
-  letter-spacing: 0.3px;
+  letter-spacing: -0.2px;
 }
 
 .header-last-updated {
@@ -413,11 +382,11 @@ body {
   background: #fff;
   border: 1px solid #E2E8F0;
   border-top: 3px solid #4472C4;
-  border-radius: 12px;
-  padding: 16px 20px;
+  border-radius: 10px;
+  padding: 12px 14px;
   flex: 1;
-  min-width: 140px;
-  max-width: 220px;
+  min-width: 120px;
+  max-width: 190px;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04), 0 4px 14px rgba(0, 0, 0, 0.06);
   transition: box-shadow 0.2s, transform 0.2s;
 }
@@ -452,7 +421,7 @@ body {
 }
 
 .kpi-value {
-  font-size: 26px;
+  font-size: 22px;
   font-weight: 700;
   color: #1E293B;
   line-height: 1.1;
