@@ -11,12 +11,12 @@ import TokenUsage from './pages/TokenUsage';
 import Comparison from './pages/Comparison';
 
 const TABS = [
-  { id: 'overview',    label: '📊 Executive Overview' },
-  { id: 'issues',      label: '⚠️ Issue Analysis' },
-  { id: 'users',       label: '👥 User Activity' },
-  { id: 'bots',        label: '🤖 Bot Performance' },
-  { id: 'tokens',      label: '🔢 Token Usage' },
-  { id: 'comparison',  label: '📅 MoM Comparison' },
+  { id: 'overview',   label: 'Executive Overview', icon: '▦' },
+  { id: 'issues',     label: 'Issue Analysis',     icon: '⚑' },
+  { id: 'users',      label: 'User Activity',      icon: '◎' },
+  { id: 'bots',       label: 'Bot Performance',    icon: '◈' },
+  { id: 'tokens',     label: 'Token Usage',        icon: '◉' },
+  { id: 'comparison', label: 'MoM Comparison',     icon: '⇄' },
 ];
 
 const DEFAULT_FILTERS = {
@@ -87,10 +87,16 @@ export default function App() {
     <div className="app-shell">
       {/* Header */}
       <header className="app-header">
-        <h1>AskMe Analytics Dashboard</h1>
+        <div className="header-brand">
+          <span className="header-logo">MJB</span>
+          <div className="header-title-group">
+            <h1>AskMe Analytics</h1>
+            <span className="header-sub">Powered by Quadratyx</span>
+          </div>
+        </div>
         {data?.lastUpdated && (
           <span className="header-last-updated">
-            🗓 Last updated: {data.lastUpdated}
+            Last updated: {data.lastUpdated}
           </span>
         )}
       </header>
@@ -103,6 +109,7 @@ export default function App() {
             className={`tab-btn${activeTab === tab.id ? ' active' : ''}`}
             onClick={() => setActiveTab(tab.id)}
           >
+            <span className="tab-icon">{tab.icon}</span>
             {tab.label}
           </button>
         ))}

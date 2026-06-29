@@ -39,12 +39,16 @@ function TrendBadge({ trend, invert, prevValue, format }) {
 
 // ── KPI Card Component ────────────────────────────────────────────────────────
 
-export default function KPICard({ label, value, format = 'number', accent, sub, trend, invertTrend, prevValue }) {
-  const labelFontSize = label.length > 24 ? '11px' : label.length > 16 ? '12px' : '13px';
+export default function KPICard({ label, value, format = 'number', accent, sub, trend, invertTrend, prevValue, icon }) {
+  const labelFontSize = label.length > 24 ? '10px' : label.length > 16 ? '11px' : '12px';
+  const accentColor = accent || '#4472C4';
   return (
-    <div className="kpi-card" style={accent ? { borderTopColor: accent } : {}}>
-      <div className="kpi-label" style={{ fontSize: labelFontSize }}>{label}</div>
-      <div className="kpi-value" style={accent ? { color: accent } : {}}>{fmt(value, format)}</div>
+    <div className="kpi-card" style={{ borderTopColor: accentColor }}>
+      <div className="kpi-card-top">
+        <div className="kpi-label" style={{ fontSize: labelFontSize }}>{label}</div>
+        {icon && <span className="kpi-icon" style={{ color: accentColor }}>{icon}</span>}
+      </div>
+      <div className="kpi-value" style={{ color: accentColor }}>{fmt(value, format)}</div>
       {sub && <div className="kpi-sub">{sub}</div>}
       <TrendBadge trend={trend} invert={invertTrend} prevValue={prevValue} format={format} />
     </div>

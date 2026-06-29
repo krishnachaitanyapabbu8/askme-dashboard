@@ -30,15 +30,15 @@ export default function ExecutiveOverview({ data }) {
       {/* KPI Row */}
       <div className="kpi-row">
         <KPICard label="Total User Questions" value={m.totalUserQuestions} trend={mom.totalUserQuestions}
-          prevValue={mom?.previous?.totalUserQuestions} sub="Questions asked by human users" />
+          prevValue={mom?.previous?.totalUserQuestions} sub="Questions asked by human users" icon="💬" />
         <KPICard label="Active Users" value={m.activeUsers} trend={mom.activeUsers}
-          prevValue={mom?.previous?.activeUsers} sub="Unique users who asked questions" />
+          prevValue={mom?.previous?.activeUsers} sub="Unique users who asked questions" icon="👤" />
         <KPICard label="Likes" value={m.totalLikes} trend={mom.totalLikes}
-          prevValue={mom?.previous?.totalLikes} accent="#10B981" sub="Positive feedback received" />
+          prevValue={mom?.previous?.totalLikes} accent="#10B981" sub="Positive feedback received" icon="👍" />
         <KPICard label="Dislikes" value={m.totalDislikes} trend={mom.totalDislikes}
-          prevValue={mom?.previous?.totalDislikes} accent="#EF4444" invertTrend sub="Negative feedback received" />
+          prevValue={mom?.previous?.totalDislikes} accent="#EF4444" invertTrend sub="Negative feedback received" icon="👎" />
         <KPICard label="Chatbot Issues" value={m.totalIssues} trend={mom.totalIssues}
-          prevValue={mom?.previous?.totalIssues} accent="#ED7D31" invertTrend sub="Sessions with any issue flagged" />
+          prevValue={mom?.previous?.totalIssues} accent="#ED7D31" invertTrend sub="Sessions with any issue flagged" icon="⚠" />
       </div>
 
       {/* Row 1: Questions by Month (Line) | Bot Responses by Bot Type (Donut) */}

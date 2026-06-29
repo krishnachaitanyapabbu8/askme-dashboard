@@ -72,16 +72,16 @@ export default function IssueAnalysis({ data }) {
       <div className="kpi-row">
         <KPICard label="Questions Training Bot Couldn't Answer" value={m.kbGaps}
           accent="#4472C4" trend={mom.kbGaps} prevValue={mom?.previous?.kbGaps} invertTrend
-          sub="RAG knowledge base gaps" />
+          sub="RAG knowledge base gaps" icon="📚" />
         <KPICard label="System Errors" value={m.systemErrors}
           accent="#EF4444" trend={mom.systemErrors} prevValue={mom?.previous?.systemErrors} invertTrend
-          sub="SQL / query execution failures" />
+          sub="SQL / query execution failures" icon="⚙" />
         <KPICard label="Total Issues" value={m.totalIssues}
           accent="#ED7D31" trend={mom.totalIssues} prevValue={mom?.previous?.totalIssues} invertTrend
-          sub="All issue types combined" />
+          sub="All issue types combined" icon="⚑" />
         <KPICard label="Bot Forgot the Conversation" value={m.sessionDrops}
           accent="#10B981" trend={mom.sessionDrops} prevValue={mom?.previous?.sessionDrops} invertTrend
-          sub="Sessions where context was lost" />
+          sub="Sessions where context was lost" icon="↺" />
       </div>
 
       {/* Row 1: Total Issue Trend | Issues by Type */}
