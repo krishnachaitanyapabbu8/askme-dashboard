@@ -8,7 +8,7 @@ import ChartCard from '../components/ChartCard';
 import PageInsight from '../components/PageInsight';
 import DrilldownModal from '../components/DrilldownModal';
 
-const COLORS = ['#4472C4', '#ED7D31', '#A5A5A5', '#FFC000', '#70AD47', '#FF0000'];
+const COLORS = ['#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#06B6D4'];
 const AL = { style: { textAnchor: 'middle', fontSize: 11, fill: '#94A3B8' } };
 const BAR_H = 36;
 

@@ -39,14 +39,26 @@ function TrendBadge({ trend, invert, prevValue, format }) {
 
 // ── KPI Card Component ────────────────────────────────────────────────────────
 
+function hexToRgba(hex, alpha) {
+  const r = parseInt(hex.slice(1, 3), 16);
+  const g = parseInt(hex.slice(3, 5), 16);
+  const b = parseInt(hex.slice(5, 7), 16);
+  return `rgba(${r},${g},${b},${alpha})`;
+}
+
 export default function KPICard({ label, value, format = 'number', accent, sub, trend, invertTrend, prevValue, icon }) {
   const labelFontSize = label.length > 24 ? '10px' : label.length > 16 ? '11px' : '12px';
-  const accentColor = accent || '#4472C4';
+  const accentColor = accent || '#3B82F6';
+  const iconBg = hexToRgba(accentColor, 0.1);
   return (
     <div className="kpi-card" style={{ borderTopColor: accentColor }}>
       <div className="kpi-card-top">
         <div className="kpi-label" style={{ fontSize: labelFontSize }}>{label}</div>
-        {icon && <span className="kpi-icon" style={{ color: accentColor }}>{icon}</span>}
+        {icon && (
+          <span className="kpi-icon" style={{ background: iconBg }}>
+            {icon}
+          </span>
+        )}
       </div>
       <div className="kpi-value" style={{ color: accentColor }}>{fmt(value, format)}</div>
       {sub && <div className="kpi-sub">{sub}</div>}

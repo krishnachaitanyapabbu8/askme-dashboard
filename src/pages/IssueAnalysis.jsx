@@ -7,7 +7,7 @@ import KPICard, { fmt } from '../components/KPICard';
 import ChartCard from '../components/ChartCard';
 import PageInsight from '../components/PageInsight';
 
-const COLORS = ['#4472C4', '#EF4444', '#A5A5A5', '#FFC000', '#10B981', '#ED7D31'];
+const COLORS = ['#3B82F6', '#EF4444', '#F59E0B', '#8B5CF6', '#10B981', '#06B6D4'];
 const AL = { style: { textAnchor: 'middle', fontSize: 11, fill: '#94A3B8' } };
 const BAR_H = 36;
 
