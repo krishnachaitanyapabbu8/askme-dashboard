@@ -33,6 +33,7 @@ export default function App() {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [syncing, setSyncing] = useState(false);
+  const [refreshed, setRefreshed] = useState(false);
   const [error, setError] = useState(null);
 
   const fetchData = useCallback(async (activeFilters) => {
@@ -64,9 +65,12 @@ export default function App() {
   const handleRefresh = useCallback(async () => {
     if (syncing) return;
     setSyncing(true);
+    setRefreshed(false);
     try {
       const result = await loadDashboardData(filters);
       setData(result);
+      setRefreshed(true);
+      setTimeout(() => setRefreshed(false), 3000);
     } catch (err) {
       console.error('Refresh error:', err);
     } finally {
@@ -122,7 +126,7 @@ export default function App() {
         </div>
       </header>
 
-      <SyncBanner syncing={syncing} />
+      <SyncBanner syncing={syncing} refreshed={refreshed} />
 
       {/* Tab Bar */}
       <nav className="tab-bar">
