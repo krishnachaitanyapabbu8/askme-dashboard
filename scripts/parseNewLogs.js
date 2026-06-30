@@ -21,7 +21,7 @@
  */
 
 import { createRequire } from 'module';
-import { readdirSync, existsSync, renameSync, unlinkSync } from 'fs';
+import { readdirSync, existsSync, renameSync, unlinkSync, appendFileSync, mkdirSync } from 'fs';
 import { join, extname, resolve, dirname } from 'path';
 import { fileURLToPath } from 'url';
 import { createClient } from '@supabase/supabase-js';
@@ -38,16 +38,24 @@ const SUPABASE_KEY = process.env.VITE_SUPABASE_ANON_KEY;
 const supabase     = SUPABASE_URL && SUPABASE_KEY ? createClient(SUPABASE_URL, SUPABASE_KEY) : null;
 
 async function pushToSupabase(cleaned, llmSteps, tokenUsage, responseTimes, flatTable) {
-  if (!supabase) { console.log('    ⚠ Supabase not configured — skipping DB push'); return; }
+  if (!supabase) {
+    console.log('    ⚠ Supabase not configured — skipping DB push');
+    return { success: false, reason: 'Supabase not configured' };
+  }
 
+  const errors = [];
   const upsert = async (table, rows, onConflict) => {
     if (!rows.length) return 0;
-    const { error, data } = await supabase.from(table).upsert(rows, { onConflict, ignoreDuplicates: true });
-    if (error) { console.error(`    ✗ Supabase ${table}: ${error.message}`); return 0; }
+    const { error } = await supabase.from(table).upsert(rows, { onConflict, ignoreDuplicates: true });
+    if (error) {
+      console.error(`    ✗ Supabase ${table}: ${error.message}`);
+      errors.push(`${table}: ${error.message}`);
+      return 0;
+    }
     return rows.length;
   };
 
-  const c = await upsert('analytics_cleaned', cleaned.map(r => ({
+  const c  = await upsert('analytics_cleaned', cleaned.map(r => ({
     session_id: r.Session_ID, date: r.Date, month: r.Month, sender_type: r.Sender_Type,
     user_name: r.User_Name, user_display: r.User_Display, bot_type: r.Bot_Type,
     message: r.Message, question_category: r.Question_Category, feedback: r.Feedback,
@@ -55,21 +63,21 @@ async function pushToSupabase(cleaned, llmSteps, tokenUsage, responseTimes, flat
     is_issue: r.Is_Issue, source_file: r.Source_File,
   })), 'session_id,sender_type,message');
 
-  const f = await upsert('analytics_flat_table', flatTable.map(r => ({
+  const f  = await upsert('analytics_flat_table', flatTable.map(r => ({
     session_id: r.Session_ID, month: r.Month, module: r.Module, bot_type: r.Bot_Type,
     is_issue: r.Is_Issue, is_system_error: r.Is_System_Error, is_kb_gap: r.Is_KB_Gap,
     is_placeholder_data: r.Is_Placeholder_Data, is_copilot_loop: r.Is_Copilot_Loop,
     is_context_drop: r.Is_Context_Drop, source_file: r.Source_File,
   })), 'session_id,bot_type');
 
-  const t = await upsert('analytics_token_usage', tokenUsage.map(r => ({
+  const t  = await upsert('analytics_token_usage', tokenUsage.map(r => ({
     session_id: r.Session_ID, month: r.Month, module_clean: r.Module_Clean,
     bot_type: r.Bot_Type, prompt_tokens: r.Prompt_Tokens,
     completion_tokens: r.Completion_Tokens, total_tokens: r.Total_Tokens,
     source_file: r.Source_File,
   })), 'session_id');
 
-  const l = await upsert('analytics_llm_steps', llmSteps.map(r => ({
+  const l  = await upsert('analytics_llm_steps', llmSteps.map(r => ({
     session_id: r.Session_ID, month: r.Month, module: r.Module, bot_type: r.Bot_Type,
     llm_step: r.LLM_Step, prompt_tokens: r.Prompt_Tokens,
     completion_tokens: r.Completion_Tokens, total_tokens: r.Total_Tokens,
@@ -82,13 +90,26 @@ async function pushToSupabase(cleaned, llmSteps, tokenUsage, responseTimes, flat
   })), 'session_id');
 
   console.log(`    → Supabase: +${c} cleaned, +${f} flat_table, +${t} tokens, +${l} llm_steps, +${rt} response_times`);
+  return { success: errors.length === 0, cleaned: c, flat_table: f, tokens: t, llm_steps: l, response_times: rt, errors };
 }
 
-const __dirname       = dirname(fileURLToPath(import.meta.url));
-const ROOT            = resolve(__dirname, '..');
-const EXCEL_PATH      = join(ROOT, 'public', 'AskQ_Master_Dashboard.xlsx');
-const LOGS_FOLDER     = join(ROOT, 'logs');
+const __dirname        = dirname(fileURLToPath(import.meta.url));
+const ROOT             = resolve(__dirname, '..');
+const EXCEL_PATH       = join(ROOT, 'public', 'AskQ_Master_Dashboard.xlsx');
+const LOGS_FOLDER      = join(ROOT, 'logs');
 const COMPLETED_FOLDER = join(ROOT, 'logs', 'completed');
+const LOG_FILE         = join(LOGS_FOLDER, 'parse_history.log');
+
+// ── Log writer ─────────────────────────────────────────────────────────────────
+// Appends a line to parse_history.log (does NOT duplicate to console).
+
+function writeLog(text) {
+  try {
+    appendFileSync(LOG_FILE, text + '\n', 'utf8');
+  } catch {
+    // If logs folder isn't created yet, silently skip — mkdirSync below handles it
+  }
+}
 
 // ── Date helpers ───────────────────────────────────────────────────────────────
 
@@ -425,6 +446,7 @@ function appendToSheet(wb, sheetName, newRows) {
 
 if (!existsSync(EXCEL_PATH))  { console.error(`Excel not found: ${EXCEL_PATH}`);  process.exit(1); }
 if (!existsSync(LOGS_FOLDER)) { console.error(`logs/ folder not found.`);          process.exit(1); }
+if (!existsSync(COMPLETED_FOLDER)) mkdirSync(COMPLETED_FOLDER, { recursive: true });
 
 const SUPPORTED = new Set(['.csv', '.xlsx', '.xls']);
 const logFiles  = readdirSync(LOGS_FOLDER)
@@ -433,12 +455,23 @@ const logFiles  = readdirSync(LOGS_FOLDER)
 const wb = XLSX.readFile(EXCEL_PATH);
 let totalAdded = 0;
 
+// ── Run header ─────────────────────────────────────────────────────────────────
+const runStart     = Date.now();
+const runTimestamp = new Date().toISOString().replace('T', ' ').slice(0, 19);
+const SEP          = '='.repeat(72);
+
+writeLog(`\n${SEP}`);
+writeLog(`[${runTimestamp}] PARSE-LOGS RUN`);
+writeLog(`Files found: ${logFiles.length}`);
+
 if (!logFiles.length) {
   console.log('No new log files found in logs/. Nothing to do.');
+  writeLog('Status: SKIPPED — no log files in logs/');
+  writeLog(SEP);
   process.exit(0);
 }
 
-// ── Process log files ──────────────────────────────────────────────────────
+// ── Process log files ──────────────────────────────────────────────────────────
 
 for (const file of logFiles) {
   const logPath = join(LOGS_FOLDER, file);
@@ -454,7 +487,11 @@ for (const file of logFiles) {
     rawRows = XLSX.utils.sheet_to_json(logWb.Sheets[sheetName], { defval: '' });
   }
 
-  if (!rawRows.length) { console.log(`  ${file}: empty — skipping`); continue; }
+  if (!rawRows.length) {
+    console.log(`  ${file}: empty — skipping`);
+    writeLog(`  [SKIP] ${file} — empty file`);
+    continue;
+  }
 
   const headers       = Object.keys(rawRows[0]);
   const isKnownFormat = ['chat_message_session_id', 'chat_message_sender_type'].every(c => headers.includes(c));
@@ -462,6 +499,8 @@ for (const file of logFiles) {
   if (!isKnownFormat) {
     console.log(`  ${file}: unrecognised format — skipping`);
     console.log(`    Columns found: ${headers.join(', ')}`);
+    writeLog(`  [SKIP] ${file} — unrecognised format`);
+    writeLog(`         Columns: ${headers.join(', ')}`);
     continue;
   }
 
@@ -477,19 +516,33 @@ for (const file of logFiles) {
   };
 
   console.log(`\n  ${file} (${rawRows.length} raw rows):`);
+  writeLog(`  [FILE] ${file} — ${rawRows.length} raw rows`);
+
   for (const [sheet, added] of Object.entries(results)) {
     console.log(`    → ${sheet}: ${added > 0 ? `+${added} new rows` : 'nothing new'}`);
+    writeLog(`         ${sheet}: ${added > 0 ? `+${added} new rows` : 'nothing new (already processed)'}`);
     totalAdded += added;
   }
 
   // Push parsed data to Supabase DB
-  await pushToSupabase(cleaned, llmSteps, tokenUsage, responseTimes, flatTable);
+  const sbResult = await pushToSupabase(cleaned, llmSteps, tokenUsage, responseTimes, flatTable);
+  if (sbResult.success) {
+    writeLog(`         Supabase push: ✓ +${sbResult.cleaned} cleaned, +${sbResult.flat_table} flat_table, +${sbResult.tokens} tokens, +${sbResult.llm_steps} llm_steps, +${sbResult.response_times} response_times`);
+  } else if (sbResult.reason) {
+    writeLog(`         Supabase push: ⚠ ${sbResult.reason}`);
+  } else {
+    writeLog(`         Supabase push: ✗ Errors — ${sbResult.errors.join('; ')}`);
+  }
 
   const dest = join(COMPLETED_FOLDER, file);
   if (existsSync(dest)) unlinkSync(dest);
   renameSync(logPath, dest);
   console.log(`    ✓ moved to logs/completed/${file}`);
+  writeLog(`         Moved to: logs/completed/${file}`);
 }
+
+// ── Run footer ─────────────────────────────────────────────────────────────────
+const durationSec = ((Date.now() - runStart) / 1000).toFixed(1);
 
 if (totalAdded > 0) {
   XLSX.writeFile(wb, EXCEL_PATH);
@@ -498,6 +551,15 @@ if (totalAdded > 0) {
   console.log('  git add public/AskQ_Master_Dashboard.xlsx');
   console.log('  git commit -m "Add prod logs YYYY-MM-DD"');
   console.log('  git push');
+  writeLog(`Total new rows: ${totalAdded}`);
+  writeLog(`Excel saved: public/AskQ_Master_Dashboard.xlsx`);
+  writeLog(`Duration: ${durationSec}s`);
+  writeLog(`Status: SUCCESS`);
 } else {
   console.log('\nNo changes — Excel unchanged.');
+  writeLog(`Total new rows: 0`);
+  writeLog(`Duration: ${durationSec}s`);
+  writeLog(`Status: COMPLETED — no new data`);
 }
+
+writeLog(SEP);
