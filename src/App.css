@@ -46,8 +46,14 @@ body {
   letter-spacing: -0.2px;
 }
 
-.header-last-updated {
+.header-right {
   margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.header-last-updated {
   font-size: 11px;
   font-weight: 500;
   opacity: 0.9;
@@ -57,6 +63,71 @@ body {
   border-radius: 20px;
   white-space: nowrap;
   letter-spacing: 0.2px;
+}
+
+.refresh-btn {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  background: rgba(255, 255, 255, 0.15);
+  border: 1px solid rgba(255, 255, 255, 0.28);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 5px 14px;
+  border-radius: 20px;
+  cursor: pointer;
+  transition: background 0.15s;
+  white-space: nowrap;
+}
+.refresh-btn:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.25);
+}
+.refresh-btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.refresh-icon {
+  font-size: 15px;
+  line-height: 1;
+  display: inline-block;
+}
+.refresh-icon.spinning {
+  animation: spin 0.9s linear infinite;
+}
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* ── Sync Banner ──────────────────────────────────────────────────────── */
+
+.sync-banner {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: #EFF6FF;
+  border-bottom: 1px solid #BFDBFE;
+  color: #1D4ED8;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 7px 20px;
+  animation: pulse-opacity 1.4s ease-in-out infinite;
+}
+
+.sync-spinner {
+  width: 13px;
+  height: 13px;
+  border: 2px solid #BFDBFE;
+  border-top-color: #1D4ED8;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+  flex-shrink: 0;
+}
+
+@keyframes pulse-opacity {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.7; }
 }
 
 /* ── Tab Bar ──────────────────────────────────────────────────────────── */

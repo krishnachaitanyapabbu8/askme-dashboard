@@ -3,6 +3,7 @@ import './App.css';
 import { loadDashboardData } from './data/dataLoader';
 import FilterPanel from './components/FilterPanel';
 import { SkeletonPage } from './components/Skeleton';
+import SyncBanner from './components/SyncBanner';
 import ExecutiveOverview from './pages/ExecutiveOverview';
 import IssueAnalysis from './pages/IssueAnalysis';
 import UserActivity from './pages/UserActivity';
@@ -31,6 +32,7 @@ export default function App() {
   const [filters, setFilters] = useState(DEFAULT_FILTERS);
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [syncing, setSyncing] = useState(false);
   const [error, setError] = useState(null);
 
   const fetchData = useCallback(async (activeFilters) => {
@@ -57,6 +59,20 @@ export default function App() {
     setFilters(newFilters);
     fetchData(newFilters);
   };
+
+  // Manual background refresh — keeps existing data visible
+  const handleRefresh = useCallback(async () => {
+    if (syncing) return;
+    setSyncing(true);
+    try {
+      const result = await loadDashboardData(filters);
+      setData(result);
+    } catch (err) {
+      console.error('Refresh error:', err);
+    } finally {
+      setSyncing(false);
+    }
+  }, [syncing, filters]);
 
   const renderPage = () => {
     if (loading) return <SkeletonPage />;
@@ -88,12 +104,25 @@ export default function App() {
       {/* Header */}
       <header className="app-header">
         <h1>AskMe Analytics Dashboard</h1>
-        {data?.lastUpdated && (
-          <span className="header-last-updated">
-            Last updated: {data.lastUpdated}
-          </span>
-        )}
+        <div className="header-right">
+          {data?.lastUpdated && (
+            <span className="header-last-updated">
+              Last updated: {data.lastUpdated}
+            </span>
+          )}
+          <button
+            className="refresh-btn"
+            onClick={handleRefresh}
+            disabled={syncing || loading}
+            title="Refresh data from database"
+          >
+            <span className={syncing ? 'refresh-icon spinning' : 'refresh-icon'}>↻</span>
+            {syncing ? 'Refreshing…' : 'Refresh'}
+          </button>
+        </div>
       </header>
+
+      <SyncBanner syncing={syncing} />
 
       {/* Tab Bar */}
       <nav className="tab-bar">
