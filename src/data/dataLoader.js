@@ -413,12 +413,23 @@ export async function loadDashboardData(filters = {}) {
       .sort((a, b) => b.issues - a.issues);
   })();
 
-  // Horizontal bar: Issues by Bot Type
+  // Horizontal bar: Issues by Bot Type — stacked by issue type so it reconciles
+  // with the KPI cards above (System Error > KB Gap > generic Issue, same
+  // precedence used for the issue sessions table below).
   const issuesByBot = (() => {
     const byBot = groupBy(ft, 'Bot_Type');
     return Object.entries(byBot)
       .filter(([b]) => b && b !== 'Human' && b !== 'Unknown')
-      .map(([bot, rows]) => ({ bot, issues: sumField(rows, 'Is_Issue') }))
+      .map(([bot, rows]) => {
+        const issueRows = rows.filter(r => toInt(r.Is_Issue) === 1);
+        let systemError = 0, kbGap = 0, issue = 0;
+        for (const r of issueRows) {
+          if (toInt(r.Is_System_Error) === 1) systemError++;
+          else if (toInt(r.Is_KB_Gap) === 1) kbGap++;
+          else issue++;
+        }
+        return { bot, issues: issueRows.length, systemError, kbGap, issue };
+      })
       .sort((a, b) => b.issues - a.issues);
   })();
 

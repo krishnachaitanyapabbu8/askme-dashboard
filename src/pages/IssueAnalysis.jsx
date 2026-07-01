@@ -155,7 +155,10 @@ export default function IssueAnalysis({ data }) {
                   label={{ value: 'Issues', position: 'insideBottom', offset: -8, ...AL }} />
                 <YAxis dataKey="bot" type="category" tick={{ fontSize: 11 }} width={130} />
                 <Tooltip contentStyle={{ fontSize: 12 }} />
-                <Bar dataKey="issues" name="Issues" fill="#4472C4" radius={[0, 3, 3, 0]}>
+                <Legend wrapperStyle={{ fontSize: 12 }} />
+                <Bar dataKey="systemError" name="System Error" stackId="a" fill={ISSUE_TYPE_COLORS['System Error'].color} radius={[0, 0, 0, 0]} />
+                <Bar dataKey="kbGap" name="Training Bot Couldn't Answer" stackId="a" fill={ISSUE_TYPE_COLORS["Training Bot Couldn't Answer"].color} radius={[0, 0, 0, 0]} />
+                <Bar dataKey="issue" name="Issue" stackId="a" fill={ISSUE_TYPE_COLORS['Issue'].color} radius={[0, 3, 3, 0]}>
                   <LabelList dataKey="issues" position="right" style={{ fontSize: 10, fill: '#64748B' }} />
                 </Bar>
               </BarChart>
