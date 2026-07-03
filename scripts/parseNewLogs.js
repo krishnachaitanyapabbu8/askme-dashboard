@@ -253,7 +253,17 @@ function detectKbGap(botMessageText) {
 // ── Row transformer ────────────────────────────────────────────────────────────
 
 function transformRawData(rows, sourceFile) {
-  rows = rows.filter(r => !EXCLUDED_USERS.has(String(r.user_name ?? '').trim()));
+  // Exclude by session, not just by row — a debug user's bot replies carry a
+  // different user_name (e.g. "Q GenAI Bot") than the human's, so filtering
+  // only rows tagged QUADDEBUG/RAMCOUSER leaves their bot replies orphaned
+  // in the output with no session context.
+  const excludedSessionIds = new Set(
+    rows
+      .filter(r => EXCLUDED_USERS.has(String(r.user_name ?? '').trim()))
+      .map(r => String(r.chat_message_session_id ?? ''))
+      .filter(Boolean)
+  );
+  rows = rows.filter(r => !excludedSessionIds.has(String(r.chat_message_session_id ?? '')));
   const cleaned      = [];
   const llmSteps     = [];
   const tokenUsage   = [];

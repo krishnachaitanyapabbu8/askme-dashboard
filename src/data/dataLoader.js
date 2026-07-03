@@ -372,11 +372,23 @@ export async function loadDashboardData(filters = {}) {
   });
 
   // Horizontal bar: Bot Responses by Bot Type
+  // Includes every bot message — even the ones where Bot_Type never resolved
+  // (blank or "Unknown") — bucketed as "Unresolved" so the chart total always
+  // reconciles to the true number of bot responses. The static opening
+  // greeting ("...your smart ERP assistant...") is excluded since it's sent
+  // before intent classification happens and isn't a real answer.
   const botResponsesByBotType = (() => {
-    const byBot = groupBy(botRows, 'Bot_Type');
+    const isGreeting = (msg) => (msg || '').includes('your smart ERP assistant');
+    const realBotRows = fc.filter(r => r.Sender_Type === 'bot' && !isGreeting(r.Message));
+    const byBot = groupBy(realBotRows, 'Bot_Type');
     return Object.entries(byBot)
-      .filter(([b]) => b)
-      .map(([bot, rows]) => ({ bot, responses: rows.length }))
+      .map(([bot, rows]) => ({ bot: bot && bot !== 'Unknown' ? bot : 'Unresolved', rows }))
+      .reduce((acc, { bot, rows }) => {
+        const existing = acc.find(d => d.bot === bot);
+        if (existing) existing.responses += rows.length;
+        else acc.push({ bot, responses: rows.length });
+        return acc;
+      }, [])
       .sort((a, b) => b.responses - a.responses);
   })();
 

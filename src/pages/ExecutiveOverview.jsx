@@ -69,8 +69,8 @@ export default function ExecutiveOverview({ data }) {
                   cx="50%" cy="50%" innerRadius={65} outerRadius={100}
                   paddingAngle={3} label={({ bot, percent }) => `${bot} ${(percent * 100).toFixed(0)}%`}
                   labelLine={false}>
-                  {c.botResponsesByBotType.map((_, i) => (
-                    <Cell key={i} fill={COLORS[i % COLORS.length]} />
+                  {c.botResponsesByBotType.map((entry, i) => (
+                    <Cell key={i} fill={entry.bot === 'Unresolved' ? '#94A3B8' : COLORS[i % COLORS.length]} />
                   ))}
                 </Pie>
                 <Tooltip formatter={(v, name) => [v.toLocaleString(), name]} contentStyle={{ fontSize: 12 }} />
