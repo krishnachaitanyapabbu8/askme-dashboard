@@ -37,6 +37,17 @@ const SUPABASE_URL = process.env.VITE_SUPABASE_URL;
 const SUPABASE_KEY = process.env.VITE_SUPABASE_ANON_KEY;
 const supabase     = SUPABASE_URL && SUPABASE_KEY ? createClient(SUPABASE_URL, SUPABASE_KEY) : null;
 
+// Records that the pipeline ran, even when a run adds zero new rows (e.g. a
+// log file that turned out to be 100% debug traffic) — so "Last updated" on
+// the dashboard reflects pipeline health, not just data freshness.
+async function recordPipelineRun() {
+  if (!supabase) return;
+  const { error } = await supabase
+    .from('analytics_pipeline_status')
+    .upsert({ id: 1, last_run_at: new Date().toISOString() }, { onConflict: 'id' });
+  if (error) console.log('    ⚠ Could not record pipeline run timestamp:', error.message);
+}
+
 async function pushToSupabase(cleaned, llmSteps, tokenUsage, responseTimes, flatTable) {
   if (!supabase) {
     console.log('    ⚠ Supabase not configured — skipping DB push');
@@ -553,6 +564,8 @@ for (const file of logFiles) {
 
 // ── Run footer ─────────────────────────────────────────────────────────────────
 const durationSec = ((Date.now() - runStart) / 1000).toFixed(1);
+
+await recordPipelineRun();
 
 if (totalAdded > 0) {
   XLSX.writeFile(wb, EXCEL_PATH);

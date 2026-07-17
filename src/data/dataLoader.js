@@ -29,6 +29,16 @@ async function fetchAllRows(table) {
   return allRows;
 }
 
+async function fetchPipelineLastRun() {
+  const { data, error } = await supabase
+    .from('analytics_pipeline_status')
+    .select('last_run_at')
+    .eq('id', 1)
+    .maybeSingle();
+  if (error || !data) return null;
+  return data.last_run_at;
+}
+
 async function fetchFromSupabase() {
   const [cleaned, flatTable, tokenUsage, llmSteps, responseTimes] = await Promise.all([
     fetchAllRows('analytics_cleaned'),
@@ -236,15 +246,17 @@ const labelStep = (step) => LLM_STEP_LABELS[step] || step;
 
 export async function loadDashboardData(filters = {}) {
   let cleaned, responseTime, tokenUsage, llmSteps, flatTable;
+  let pipelineLastRun = null;
 
   if (supabase) {
     // ── Mode 1: Supabase DB ───────────────────────────────────────────────
-    const data = await fetchFromSupabase();
+    const [data, lastRun] = await Promise.all([fetchFromSupabase(), fetchPipelineLastRun()]);
     cleaned      = data.cleaned.map(r       => ({ ...r, Month: normalizeMonth(r.Month) }));
     responseTime = data.response_times.map(r => ({ ...r, Month: normalizeMonth(r.Month) }));
     tokenUsage   = data.token_usage.map(r    => ({ ...r, Month: normalizeMonth(r.Month) }));
     llmSteps     = data.llm_steps.map(r      => ({ ...r, Month: normalizeMonth(r.Month) }));
     flatTable    = data.flat_table.map(r     => ({ ...r, Month: normalizeMonth(r.Month) }));
+    pipelineLastRun = lastRun;
   } else if (API_BASE) {
     // ── Mode 2: Django API ────────────────────────────────────────────────
     const data = await fetchFromAPI();
@@ -844,7 +856,19 @@ export async function loadDashboardData(filters = {}) {
   })();
 
   // ── Last updated date ────────────────────────────────────────────────────
+  // Prefer the pipeline's last-run timestamp (reflects "did the pipeline check
+  // for new logs today", even on a run that added zero rows — e.g. a log file
+  // that was 100% debug traffic). Falls back to the latest date found in the
+  // data itself when that isn't available (Excel-fallback / API modes).
   const lastUpdated = (() => {
+    if (pipelineLastRun) {
+      const d = new Date(pipelineLastRun);
+      if (!isNaN(d)) {
+        const dd = String(d.getDate()).padStart(2, '0');
+        const mo = String(d.getMonth() + 1).padStart(2, '0');
+        return `${dd}-${mo}-${d.getFullYear()}`;
+      }
+    }
     // Dates are DD-MM-YYYY — convert to YYYY-MM-DD for correct sorting
     const dates = fc.map(r => r.Date).filter(Boolean).map(d => {
       const m = String(d).match(/^(\d{1,2})-(\d{1,2})-(\d{4})$/);
