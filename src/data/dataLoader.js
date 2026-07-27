@@ -590,6 +590,20 @@ export async function loadDashboardData(filters = {}) {
       .sort((a, b) => b.totalTokens - a.totalTokens);
   })();
 
+  // Horizontal bar: Tokens by Bot Type (prompt vs completion split)
+  const tokensByBotType = (() => {
+    const byBot = groupBy(ftu, 'Bot_Type');
+    return Object.entries(byBot)
+      .filter(([b]) => b && b !== 'Unknown')
+      .map(([bot, rows]) => ({
+        bot,
+        promptTokens:     rows.reduce((s, r) => s + toInt(r.Prompt_Tokens), 0),
+        completionTokens: rows.reduce((s, r) => s + toInt(r.Completion_Tokens), 0),
+        totalTokens:      rows.reduce((s, r) => s + toInt(r.Total_Tokens), 0),
+      }))
+      .sort((a, b) => b.totalTokens - a.totalTokens);
+  })();
+
   const tokensByStep = (() => {
     const byStep = groupBy(fls, 'LLM_Step');
     return Object.entries(byStep)
@@ -979,6 +993,7 @@ export async function loadDashboardData(filters = {}) {
       tokensByMonth,
       tokenSplitByMonth,
       tokensByModule,
+      tokensByBotType,
       tokensByStep,
       // Issue Analysis extras
       issueRateByMonth,

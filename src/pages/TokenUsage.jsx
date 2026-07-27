@@ -151,6 +151,30 @@ export default function TokenUsage({ data }) {
           )}
         </ChartCard>
       </div>
+
+      {/* Row 4: Tokens by Bot Type */}
+      <div className="chart-row single">
+        <ChartCard title="Tokens by Bot Type" minHeight={280}>
+          {c.tokensByBotType.length === 0 ? <EmptyState /> : (
+            <ResponsiveContainer width="100%" height={Math.max(220, c.tokensByBotType.length * BAR_H)}>
+              <BarChart layout="vertical" data={c.tokensByBotType}
+                margin={{ top: 5, right: 70, left: 20, bottom: 25 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#E0E0E0" horizontal={false} />
+                <XAxis type="number" tickFormatter={formatTokenAxis} tick={{ fontSize: 11 }}
+                  label={{ value: 'Tokens', position: 'insideBottom', offset: -8, ...AL }} />
+                <YAxis dataKey="bot" type="category" tick={{ fontSize: 11 }} width={130} />
+                <Tooltip contentStyle={{ fontSize: 12 }} formatter={(v, name) => [fmt(v, 'tokens'), name]} />
+                <Legend wrapperStyle={{ fontSize: 12 }} />
+                <Bar dataKey="promptTokens" name="Prompt Tokens" stackId="a" fill="#4472C4" />
+                <Bar dataKey="completionTokens" name="Completion Tokens" stackId="a" fill="#ED7D31" radius={[0, 3, 3, 0]}>
+                  <LabelList dataKey="totalTokens" position="right" formatter={formatTokenAxis}
+                    style={{ fontSize: 10, fill: '#64748B' }} />
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
+          )}
+        </ChartCard>
+      </div>
     </div>
   );
 }
