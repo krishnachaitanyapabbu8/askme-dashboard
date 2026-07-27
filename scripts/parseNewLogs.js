@@ -211,12 +211,20 @@ function parsePythonDict(s) {
 }
 
 // ── Bot type + module inference ────────────────────────────────────────────────
+// The raw user_name on a bot row directly identifies which bot answered —
+// more reliable than inferring it from the shape of the token payload, which
+// differs per bot (NLSQLAgent uses `token_usage`, Training Bot uses `steps`)
+// and previously left every non-NLSQLAgent bot row tagged as Bot_Type: ''.
 
-function inferBotType(rg) {
-  if (!rg?.token_usage || typeof rg.token_usage !== 'object') return '';
-  const steps = Object.keys(rg.token_usage);
-  if (steps.some(s => s.includes('sql'))) return 'NLSQLAgent';
-  return '';
+const BOT_TYPE_BY_USERNAME = {
+  'Q GenAI Bot':       'NLSQLAgent',
+  'Q Training Bot':    'Training Bot',
+  'Training Bot':      'Training Bot',
+  'Copilot Sales Bot': 'Copilot Sales Bot',
+};
+
+function inferBotType(userName) {
+  return BOT_TYPE_BY_USERNAME[String(userName ?? '').trim()] ?? '';
 }
 
 function inferModule(rg) {
@@ -304,7 +312,7 @@ function transformRawData(rows, sourceFile) {
     const userName   = row.user_name ?? '';
     const rg         = parsePythonDict(row.response_generation);
     const module     = inferModule(rg);
-    const botType    = isBot ? inferBotType(rg) : '';
+    const botType    = isBot ? inferBotType(userName) : '';
     const queryFailed = rg?.query_exce_failed_status === true ? 1 : 0;
     const category   = isBot ? '' : classifyQuestion(message);
 
@@ -334,7 +342,9 @@ function transformRawData(rows, sourceFile) {
     if (!isBot) continue;
 
     // ── LLM steps + token aggregation ────────────────────────────────────────
-    const tu = rg?.token_usage;
+    // NLSQLAgent nests step data under `token_usage`; Training Bot nests the
+    // same shape under `steps`. Prefer token_usage, fall back to steps.
+    const tu = rg?.token_usage ?? rg?.steps;
     if (tu && typeof tu === 'object') {
       let totalPrompt = 0, totalCompletion = 0, totalAll = 0;
 
